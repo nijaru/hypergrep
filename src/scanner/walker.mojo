@@ -2,11 +2,10 @@ from pathlib import Path
 from collections import List
 from src.scanner.py_regex import Regex
 
-fn scan_file(file: Path, pattern: String) -> Bool:
+fn scan_file(file: Path, re: Regex) -> Bool:
     try:
         with open(file, "r") as f:
             var content = f.read()
-            var re = Regex(pattern)
             return re.matches(content)
     except:
         return False
@@ -39,8 +38,10 @@ fn hyper_scan(root: Path, pattern: String) raises -> List[Path]:
 
     print("Scanned " + String(len(all_files)) + " files.")
 
+    var re = Regex(pattern)
+    
     for i in range(len(all_files)):
-        if scan_file(all_files[i], pattern):
+        if scan_file(all_files[i], re):
             candidates.append(all_files[i])
             
     return candidates^

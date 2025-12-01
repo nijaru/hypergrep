@@ -11,4 +11,4 @@ Upgrading from "Prototype" to "High Performance".
 - **Regex:** Replace Python `re` with `libc` binding.
 
 ## Blockers
-- `libc` Regex binding caused Mojo compilation errors (Type inference/Pointer issues). Need to resolve before enabling native speed.
+- **`libc` Regex Binding:** Mojo `UnsafePointer` syntax in Nightly is strictly typed (`UnsafePointerV2`) and aliases/allocators have changed. FFI binding requires finding the exact invocation for `UnsafePointer[mut=True, type=UInt8, origin=...]`. For now, we fell back to `src/scanner/py_regex.mojo`.
