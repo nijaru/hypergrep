@@ -1,23 +1,23 @@
 # Mojo & MAX Project Reference
 
-**Based on:** `modular/modular` repository analysis (Updated Nov 30, 2025).
+**Based on:** `modular/modular` repository analysis (Stable v0.25.7).
 
 ## 1. Project Setup (Pixi)
 
-The standard way to set up a Mojo project with AI dependencies is using `pixi`.
+The standard way to set up a Mojo project with MAX dependencies is using `pixi`.
 
 ```toml
 [workspace]
 name = "hgrep"
 version = "0.1.0"
 description = "Agent-Native search tool"
-channels = ["conda-forge", "https://conda.modular.com/max-nightly/", "pytorch"]
+channels = ["conda-forge", "https://conda.modular.com/max/", "pytorch"]
 platforms = ["osx-arm64", "linux-64"]
 
 [dependencies]
-max = "*"
+max = ">=25.7"
 python = ">=3.11,<3.14"
-onnxruntime = ">=1.16.0,<2"  # Fallback inference engine
+onnxruntime = ">=1.16.0,<2"
 
 [tasks]
 build = "mojo build cli.mojo -o hygrep"
@@ -56,39 +56,39 @@ hgrep/
 └── models/               # ONNX models
 ```
 
-## 4. Mojo Standard Library (v0.26+ Changes)
-
-**Critical Update:** `UnsafePointer` memory management has changed significantly in Nightly/v0.26+.
+## 4. Mojo Standard Library (v0.25.7 Stable)
 
 ### Allocation
-`UnsafePointer.alloc()` is **removed**. You must use the global `alloc` function.
+Use `alloc` from `memory` for best practice, though `UnsafePointer.alloc` exists.
 
 ```mojo
-from memory import UnsafePointer, alloc
+from memory import alloc
 
 fn example():
-    # OLD: var p = UnsafePointer[Int].alloc(10)
-    
-    # NEW: Use global alloc
     var p = alloc[Int](10)
     p[0] = 1
     p.free()
 ```
 
-### FFI & C-Bindings
-To bind C functions taking `void*` or `char*`:
+### FFI & C-Bindings (The "Int" Pattern)
+To bind C functions taking `void*` or `char*` without fighting type inference:
+1.  Allocate using `alloc`.
+2.  Cast to `Int` (Address) for storage/passing.
+3.  Pass `Int` to `external_call`.
 
 ```mojo
 from sys import external_call
-from memory import UnsafePointer
+from memory import alloc
 
-# Define VoidPtr as UnsafePointer to Byte
-alias VoidPtr = UnsafePointer[Scalar[DType.uint8]]
+alias VoidPtr = Int
 
-fn call_c_func():
-    # Cast or allocate
-    var ptr = VoidPtr.alloc(10)
+fn call_c_func(ptr: VoidPtr):
     external_call["c_func", NoneType](ptr)
+
+fn main():
+    var p = alloc[UInt8](10)
+    call_c_func(Int(p))
+    p.free()
 ```
 
 ## 5. Code Examples
