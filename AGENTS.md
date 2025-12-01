@@ -45,19 +45,14 @@
 -   **Models**: `Qwen3-Reranker-0.6B` (INT8/FP16 ONNX)
 -   **Protocol**: Model Context Protocol (MCP)
 
-## Commands (Planned)
+## Commands
 
 ```bash
 # Build
 pixi run build
 
-# Run standard search
-pixi run run -- "pattern" ./src
-# OR
-./hygrep "pattern" ./src
-
-# Run semantic search
-./hygrep "login logic" ./src --smart
+# Run search (Auto-Hybrid)
+./hygrep "query" ./src
 ```
 
 ## Development Phases
