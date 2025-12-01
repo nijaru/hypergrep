@@ -1,5 +1,5 @@
 from src.scanner.walker import hyper_scan
-from src.brain.reranker import Reranker
+from src.inference.reranker import Reranker
 from pathlib import Path
 import sys
 

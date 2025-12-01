@@ -52,7 +52,7 @@ hgrep/
 ├── src/
 │   ├── cli.mojo          # Entry point
 │   ├── scanner/          # "Hyper Scanner" (Mojo + Libc)
-│   └── brain/            # AI Integration (Python Interop)
+│   └── inference/        # AI Integration (Python Interop)
 └── models/               # ONNX models
 ```
 

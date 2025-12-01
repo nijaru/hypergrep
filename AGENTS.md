@@ -27,7 +27,7 @@ The architecture follows a strict **Recall -> Rerank** pipeline.
 |-----------|---------|
 | `src/` | Mojo source code root |
 | `src/scanner/` | **Hyper Scanner** (Pure Mojo/FFI) |
-| `src/brain/` | **The Brain** (Python Interop/ONNX) |
+| `src/inference/` | **Inference Engine** (Python Interop/ONNX) |
 | `models/` | Downloaded ONNX models (gitignored) |
 | `ai/` | **AI Context** (See below) |
 

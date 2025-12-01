@@ -15,9 +15,8 @@ struct Reranker:
             var sys = Python.import_module("sys")
             var os = Python.import_module("os")
             
-            if "src/brain" not in String(sys.path):
-                sys.path.append("src/brain")
-            
+            if "src/inference" not in String(sys.path):
+                sys.path.append("src/inference")            
             var current_dir = String(os.getcwd())
             var pixi_site_packages = current_dir + "/.pixi/envs/default/lib/python3.11/site-packages"
             
