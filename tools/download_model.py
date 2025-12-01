@@ -2,9 +2,7 @@ from huggingface_hub import hf_hub_download
 import os
 import shutil
 
-# Use Official Repo (Mixedbread provides native ONNX)
 MODEL_REPO = "mixedbread-ai/mxbai-rerank-xsmall-v1"
-# Files found: onnx/model.onnx, onnx/model_quantized.onnx
 MODEL_FILE = "onnx/model_quantized.onnx" 
 TOKENIZER_FILE = "tokenizer.json"
 DEST_DIR = "models"
