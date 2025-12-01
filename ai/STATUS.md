@@ -2,13 +2,14 @@
 | Metric | Value | Updated |
 |--------|-------|---------|
 | Phase | 2 (Optimization) | 2025-11-30 |
-| Status | Prototype Functional | 2025-11-30 |
-| Perf | Slow (Sequential) | 2025-11-30 |
+| Status | Functional Prototype | 2025-11-30 |
+| Perf | Slow (Python Regex) | 2025-11-30 |
 
 ## Active Work
-Upgrading from "Prototype" to "High Performance".
-- **Scanner:** Convert sequential walker to Parallel Work-Stealing.
-- **Regex:** Replace Python `re` with `libc` binding.
+Optimization (Native Regex + Parallelism).
 
 ## Blockers
-- **`libc` Regex Binding:** Mojo `UnsafePointer` syntax in Nightly is strictly typed (`UnsafePointerV2`) and aliases/allocators have changed. FFI binding requires finding the exact invocation for `UnsafePointer[mut=True, type=UInt8, origin=...]`. For now, we fell back to `src/scanner/py_regex.mojo`.
+- **UnsafePointer Syntax:** The `libc` binding in `src/scanner/c_regex.mojo` fails to compile because we cannot find the correct syntax to instantiate `UnsafePointer[type, ...]` with specific mutability/origin in the current Mojo Nightly build.
+    - *Attempted:* `UnsafePointer[T, mut=True]`, `UnsafePointer[T, True]`, `ExternalMutPointer`.
+    - *Error:* "inferred parameter passed out of order" or "failed to infer parameter".
+    - *Workaround:* Used `py_regex` (Python `re` wrapper) to keep build green.
