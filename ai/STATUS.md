@@ -2,16 +2,24 @@
 
 | Metric | Value | Updated |
 |--------|-------|---------|
-| Phase | 5 (Refactoring) | 2025-12-01 |
-| Status | Active Development | 2025-12-01 |
+| Phase | 5 (Stable) | 2025-12-01 |
+| Status | Ready for Use | 2025-12-01 |
 | Perf | ~19k files/sec (Recall) | 2025-12-01 |
 | Mojo | v25.7 | 2025-12-01 |
 
-## Active Work
+## Completed (This Session)
 
-Code review completed. Phase 1 refactoring in progress:
-- P1: File size limit, mask initialization (crash prevention)
-- P2: Path validation, --help flag, Python version detection
+**Phase 1 (Crash Prevention):**
+- File size limit (1MB max)
+- Mask array initialization
+- Path validation before scan
+- --help flag
+- Dynamic Python version detection
+
+**Phase 2 (Robustness):**
+- Circular symlink handling (visited Set)
+- --top-k flag for result count
+- Errors routed to stderr
 
 ## Blockers
 
@@ -22,15 +30,14 @@ None.
 - Recall→Rerank architecture is solid
 - Parallel scanning achieves target performance
 - Tree-sitter extraction covers 6 languages
+- Mojo stdlib provides needed primitives (Set, realpath, stderr)
 
-## What Didn't Work
+## Known Issues
 
-- Double file reads (scanner + extractor) - inefficient
-- Hardcoded Python versions - fragile
-- Missing CLI polish (--help, validation)
+- 128-byte regex memory leak (Mojo v25.7 limitation)
+- Double file reads (scanner + extractor) - performance opportunity
 
 ## Next Steps
 
-1. Complete Phase 1 issues (see `bd list --status=open`)
-2. Phase 2: Circular symlinks, stderr, --top-k
-3. Phase 3: Performance (avoid double reads, parallel extraction)
+1. Phase 3 (Performance): Avoid double reads, parallel extraction
+2. Phase 4 (Polish): More tests, memory leak fix when Mojo updates
