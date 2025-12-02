@@ -82,17 +82,19 @@ class SmartSearcher:
             res = self.session.run(None, inputs)
             all_logits.extend(res[0].flatten())
         
-        # 3. Merge Scores
+        # 3. Merge Scores (normalize with sigmoid for 0-1 range)
         scored_results = []
         for i, score in enumerate(all_logits):
             cand = candidates[i]
-            cand["score"] = float(score)
-            del cand["score_text"] # Remove internal field
+            # Sigmoid normalization: 1 / (1 + exp(-x))
+            normalized_score = 1.0 / (1.0 + np.exp(-float(score)))
+            cand["score"] = round(float(normalized_score), 4)
+            del cand["score_text"]  # Remove internal field
             scored_results.append(cand)
-            
+
         # Sort by score desc
         scored_results.sort(key=lambda x: x["score"], reverse=True)
-        
+
         return json.dumps(scored_results[:top_k])
 
 # Global instance for easy interop (optional, or instantiate in Mojo)

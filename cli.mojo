@@ -11,12 +11,12 @@ fn print_help():
     print("Usage: hygrep <query> [path] [options]")
     print("")
     print("Arguments:")
-    print("  query     Search query (natural language or regex)")
-    print("  path      Directory to search (default: current directory)")
+    print("  query       Search query (natural language or regex)")
+    print("  path        Directory to search (default: current directory)")
     print("")
     print("Options:")
+    print("  -n N        Number of results to return (default: 10)")
     print("  --json      Output structured JSON for agents")
-    print("  --top-k N   Number of results to return (default: 10)")
     print("  --help      Show this help message")
 
 fn main() raises:
@@ -26,24 +26,24 @@ fn main() raises:
     var path_str = "."
     var json_mode = False
     var top_k = 10
-    var expect_top_k = False
+    var expect_n = False
 
     # Simple manual arg parsing
     # skips args[0] (program name)
     for i in range(1, len(args)):
         var arg = args[i]
-        if expect_top_k:
+        if expect_n:
             top_k = Int(atol(arg))
-            expect_top_k = False
+            expect_n = False
         elif arg == "--help" or arg == "-h":
             print_help()
             return
         elif arg == "--json":
             json_mode = True
-        elif arg == "--top-k":
-            expect_top_k = True
-        elif arg.startswith("--top-k="):
-            top_k = Int(atol(arg[8:]))
+        elif arg == "-n":
+            expect_n = True
+        elif arg.startswith("-n="):
+            top_k = Int(atol(arg[3:]))
         elif query == "":
             query = arg
         elif path_str == ".":

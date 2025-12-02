@@ -104,7 +104,7 @@ fn hyper_scan(root: Path, pattern: String) raises -> List[Path]:
             all_files.append(current)
 
     var num_files = len(all_files)
-    print("Scanned " + String(num_files) + " files.")
+    print("Scanned " + String(num_files) + " files.", file=stderr)
 
     if num_files == 0:
         return candidates^
