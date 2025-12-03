@@ -20,7 +20,6 @@ None.
 
 ### CLI Improvements (2025-12-03)
 
-- Add progress bar for reranking batches (Rich Progress)
 - Add syntax highlighting for code context (Rich Syntax, 40+ extensions)
 - Modernize CLI with Typer + Rich (visible subcommands, examples panel)
 - Refactor: move imports to module level, extract EXT_TO_LEXER constant

@@ -11,7 +11,6 @@ from typing import Annotated, Optional
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 
@@ -389,30 +388,15 @@ def search(
     else:
         from .reranker import Reranker
 
-        reranker = Reranker()
-
-        # Rerank with progress bar
+        # Rerank with spinner
         if not quiet and not json_output:
-            with Progress(
-                TextColumn("[bold blue]Reranking"),
-                BarColumn(),
-                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                console=err_console,
-                transient=True,
-            ) as progress:
-                task = progress.add_task("rerank", total=100)
-
-                def update_progress(current: int, total: int) -> None:
-                    progress.update(task, completed=int(current / total * 100))
-
+            with err_console.status("[bold blue]Reranking...", spinner="dots"):
+                reranker = Reranker()
                 results = reranker.search(
-                    query,
-                    file_contents,
-                    top_k=n,
-                    max_candidates=max_candidates,
-                    progress_callback=update_progress,
+                    query, file_contents, top_k=n, max_candidates=max_candidates
                 )
         else:
+            reranker = Reranker()
             results = reranker.search(query, file_contents, top_k=n, max_candidates=max_candidates)
 
     stats_data["rerank_ms"] = int((time.perf_counter() - rerank_start) * 1000)
