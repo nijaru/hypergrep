@@ -13,21 +13,7 @@ huggingface_hub = ">=1.1.6,<2"
 numpy = ">=1.21,<3"
 tokenizers = ">=0.22.1,<0.23"
 pathspec = ">=0.12.1,<0.13"
-
-# CPU-only onnxruntime for default environment
-[feature.cpu.dependencies]
 onnxruntime = ">=1.16.0,<2"
-
-# CUDA-enabled onnxruntime for Linux with NVIDIA GPU
-[feature.cuda]
-platforms = ["linux-64"]
-[feature.cuda.dependencies]
-onnxruntime = { version = ">=1.16.0,<2", build = "*cuda*" }
-
-# Environments
-[environments]
-default = { features = ["cpu"], solve-group = "default" }
-cuda = { features = ["cuda"], solve-group = "cuda" }
 
 [pypi-dependencies]
 tree-sitter = ">=0.24.0"

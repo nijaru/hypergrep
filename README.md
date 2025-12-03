@@ -146,21 +146,6 @@ Query → [Mojo Scanner] → candidates → [ONNX Reranker] → results
 | Extraction | Tree-sitter (Python, JS, TS, Go, Rust, Mojo) |
 | Reranking | ONNX Runtime (`mxbai-rerank-xsmall-v1`) |
 
-## GPU Acceleration (Optional)
-
-hygrep auto-detects GPU support. Install the appropriate ONNX Runtime package for 2-5x faster reranking:
-
-```bash
-# NVIDIA GPU (Linux/Windows)
-pip install onnxruntime-gpu
-
-# Check if GPU is active
-hygrep "query" . --stats
-# Output: Device: CUDA (or CPU if not available)
-```
-
-**Note:** The default `onnxruntime` uses CPU. GPU acceleration requires installing the GPU-enabled package separately.
-
 ## Development
 
 ```bash
