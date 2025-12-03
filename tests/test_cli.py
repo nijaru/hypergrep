@@ -155,6 +155,73 @@ def test_help():
     print("Help flag: PASS")
 
 
+def test_info_command():
+    """Test 'hygrep info' command."""
+    import io
+    from contextlib import redirect_stdout
+
+    sys.argv = ["hygrep", "info"]
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        try:
+            cli.main()
+        except SystemExit as e:
+            assert e.code == 0, f"Expected exit 0, got {e.code}"
+
+    out = stdout.getvalue()
+    assert "hygrep" in out
+    assert "Model:" in out or "Model" in out
+    assert "Scanner:" in out or "scanner" in out.lower()
+
+    print("Info command: PASS")
+
+
+def test_model_command():
+    """Test 'hygrep model' command."""
+    import io
+    from contextlib import redirect_stdout
+
+    sys.argv = ["hygrep", "model"]
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        try:
+            cli.main()
+        except SystemExit as e:
+            # Exit 0 if installed, 1 if not
+            assert e.code in (0, 1), f"Expected exit 0 or 1, got {e.code}"
+
+    out = stdout.getvalue()
+    assert "mixedbread-ai" in out or "Model:" in out
+
+    print("Model command: PASS")
+
+
+def test_fast_mode():
+    """Test --fast mode (skip reranking)."""
+    import io
+    from contextlib import redirect_stdout
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "test.py")
+        with open(test_file, "w") as f:
+            f.write("def hello(): pass\n")
+
+        sys.argv = ["hygrep", "hello", tmpdir, "--fast", "--json", "-q"]
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            try:
+                cli.main()
+            except SystemExit:
+                pass
+
+        results = json.loads(stdout.getvalue())
+        assert len(results) >= 1
+        # Fast mode should have score 0.0
+        assert results[0]["score"] == 0.0
+
+    print("Fast mode: PASS")
+
+
 if __name__ == "__main__":
     print("Running CLI tests...\n")
     test_exit_codes()
@@ -162,4 +229,7 @@ if __name__ == "__main__":
     test_exclude_patterns()
     test_type_filter()
     test_help()
+    test_info_command()
+    test_model_command()
+    test_fast_mode()
     print("\nAll CLI tests passed!")

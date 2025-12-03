@@ -7,12 +7,10 @@ from hygrep.reranker import Reranker
 
 
 def test_reranker():
-    model_path = "models/reranker.onnx"
+    """Test reranker initialization and search.
 
-    if not os.path.exists(model_path):
-        print("Skipping test: models not found (run hygrep once to download)")
-        return
-
+    Model is auto-downloaded on first use if not cached.
+    """
     print("Initializing reranker...")
     reranker = Reranker()
 

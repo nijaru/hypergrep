@@ -8,10 +8,6 @@ build/
 __pycache__/
 *.pyc
 
-# Models
-models/*.onnx
-*.onnx
-
 # OS
 .DS_Store
 

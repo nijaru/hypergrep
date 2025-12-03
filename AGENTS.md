@@ -40,7 +40,6 @@ src/
 │   └── reranker.py     # ONNX cross-encoder
 │   └── _scanner.so     # Built extension (gitignored)
 tests/                  # Mojo + Python tests
-models/                 # ONNX models (gitignored, auto-downloaded)
 pyproject.toml          # Python packaging
 hatch_build.py          # Platform wheel hook
 ```
