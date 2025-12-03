@@ -17,17 +17,28 @@ onnxruntime = ">=1.16.0,<2"
 
 [pypi-dependencies]
 tree-sitter = ">=0.24.0"
-tree-sitter-python = ">=0.23.0"
-tree-sitter-javascript = ">=0.23.0"
-tree-sitter-typescript = ">=0.23.0"
-tree-sitter-rust = ">=0.23.0"
-tree-sitter-go = ">=0.23.0"
+tree-sitter-bash = ">=0.23.0"
 tree-sitter-c = ">=0.23.0"
-tree-sitter-cpp = ">=0.23.0"
-tree-sitter-java = ">=0.23.0"
-tree-sitter-ruby = ">=0.23.0"
 tree-sitter-c-sharp = ">=0.23.0"
+tree-sitter-cpp = ">=0.23.0"
+tree-sitter-elixir = ">=0.3.0"
+tree-sitter-go = ">=0.23.0"
+tree-sitter-java = ">=0.23.0"
+tree-sitter-javascript = ">=0.23.0"
+tree-sitter-json = ">=0.24.0"
+tree-sitter-kotlin = ">=1.0.0"
+tree-sitter-lua = ">=0.2.0"
 tree-sitter-mojo = { git = "https://github.com/lsh/tree-sitter-mojo.git" }
+tree-sitter-php = ">=0.23.0"
+tree-sitter-python = ">=0.23.0"
+tree-sitter-ruby = ">=0.23.0"
+tree-sitter-rust = ">=0.23.0"
+tree-sitter-svelte = ">=1.0.0"
+tree-sitter-swift = ">=0.0.1"
+tree-sitter-toml = ">=0.7.0"
+tree-sitter-typescript = ">=0.23.0"
+tree-sitter-yaml = ">=0.7.0"
+tree-sitter-zig = ">=1.0.0"
 
 [tasks]
 # Build Mojo scanner as Python extension
@@ -38,6 +49,6 @@ hygrep = { cmd = "python -m hygrep.cli", env = { PYTHONPATH = "src" } }
 # Run Mojo tests
 test-mojo = "mojo -I . tests/test_regex_smoke.mojo && mojo -I . tests/test_scanner.mojo"
 # Run Python tests
-test-py = { cmd = "python tests/test_context.py && python tests/test_reranker.py && python tests/test_cli.py && python tests/test_golden.py", env = { PYTHONPATH = "src" } }
+test-py = { cmd = "python tests/test_context.py && python tests/test_reranker.py && python tests/test_cli.py && python tests/test_golden.py && python tests/test_languages.py", env = { PYTHONPATH = "src" } }
 # Run all tests
 test = { depends-on = ["test-mojo", "test-py"] }

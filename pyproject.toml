@@ -43,6 +43,17 @@ dependencies = [
     "tree-sitter-java>=0.23",
     "tree-sitter-ruby>=0.23",
     "tree-sitter-c-sharp>=0.23",
+    "tree-sitter-bash>=0.23",
+    "tree-sitter-php>=0.23",
+    "tree-sitter-kotlin>=1.0",
+    "tree-sitter-lua>=0.2",
+    "tree-sitter-swift>=0.0.1",
+    "tree-sitter-elixir>=0.3",
+    "tree-sitter-zig>=1.0",
+    "tree-sitter-svelte>=1.0",
+    "tree-sitter-yaml>=0.7",
+    "tree-sitter-toml>=0.7",
+    "tree-sitter-json>=0.24",
     "huggingface-hub>=0.20",
 ]
 

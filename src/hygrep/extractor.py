@@ -12,6 +12,17 @@ import tree_sitter_python
 import tree_sitter_ruby
 import tree_sitter_rust
 import tree_sitter_typescript
+import tree_sitter_bash
+import tree_sitter_php
+import tree_sitter_kotlin
+import tree_sitter_lua
+import tree_sitter_swift
+import tree_sitter_elixir
+import tree_sitter_zig
+import tree_sitter_svelte
+import tree_sitter_yaml
+import tree_sitter_toml
+import tree_sitter_json
 
 try:
     import tree_sitter_mojo
@@ -20,25 +31,40 @@ except ImportError:
     HAS_MOJO = False
 from tree_sitter import Language, Parser, Query, QueryCursor
 
-# Map extensions to language capsules
 LANGUAGE_CAPSULES = {
-    ".py": tree_sitter_python.language(),
+    ".bash": tree_sitter_bash.language(),
+    ".c": tree_sitter_c.language(),
+    ".cc": tree_sitter_cpp.language(),
+    ".cs": tree_sitter_c_sharp.language(),
+    ".cpp": tree_sitter_cpp.language(),
+    ".cxx": tree_sitter_cpp.language(),
+    ".ex": tree_sitter_elixir.language(),
+    ".exs": tree_sitter_elixir.language(),
+    ".go": tree_sitter_go.language(),
+    ".h": tree_sitter_c.language(),
+    ".hh": tree_sitter_cpp.language(),
+    ".hpp": tree_sitter_cpp.language(),
+    ".java": tree_sitter_java.language(),
     ".js": tree_sitter_javascript.language(),
+    ".json": tree_sitter_json.language(),
     ".jsx": tree_sitter_javascript.language(),
+    ".kt": tree_sitter_kotlin.language(),
+    ".kts": tree_sitter_kotlin.language(),
+    ".lua": tree_sitter_lua.language(),
+    ".php": tree_sitter_php.language_php(),
+    ".py": tree_sitter_python.language(),
+    ".rb": tree_sitter_ruby.language(),
+    ".rs": tree_sitter_rust.language(),
+    ".sh": tree_sitter_bash.language(),
+    ".svelte": tree_sitter_svelte.language(),
+    ".swift": tree_sitter_swift.language(),
+    ".toml": tree_sitter_toml.language(),
     ".ts": tree_sitter_typescript.language_typescript(),
     ".tsx": tree_sitter_typescript.language_tsx(),
-    ".rs": tree_sitter_rust.language(),
-    ".go": tree_sitter_go.language(),
-    ".c": tree_sitter_c.language(),
-    ".h": tree_sitter_c.language(),
-    ".cpp": tree_sitter_cpp.language(),
-    ".cc": tree_sitter_cpp.language(),
-    ".cxx": tree_sitter_cpp.language(),
-    ".hpp": tree_sitter_cpp.language(),
-    ".hh": tree_sitter_cpp.language(),
-    ".java": tree_sitter_java.language(),
-    ".rb": tree_sitter_ruby.language(),
-    ".cs": tree_sitter_c_sharp.language(),
+    ".yaml": tree_sitter_yaml.language(),
+    ".yml": tree_sitter_yaml.language(),
+    ".zig": tree_sitter_zig.language(),
+    ".zsh": tree_sitter_bash.language(),
 }
 
 # Add Mojo if available
@@ -47,37 +73,7 @@ if HAS_MOJO:
     LANGUAGE_CAPSULES[".🔥"] = tree_sitter_mojo.language()
 
 QUERIES = {
-    "python": """
-        (function_definition) @function
-        (class_definition) @class
-    """,
-    "javascript": """
-        (function_declaration) @function
-        (class_declaration) @class
-        (arrow_function) @function
-    """,
-    "typescript": """
-        (function_declaration) @function
-        (class_declaration) @class
-        (interface_declaration) @class
-        (arrow_function) @function
-    """,
-    "rust": """
-        (function_item) @function
-        (impl_item) @class
-        (struct_item) @class
-        (trait_item) @class
-        (enum_item) @class
-    """,
-    "go": """
-        (function_declaration) @function
-        (method_declaration) @function
-        (type_declaration) @class
-    """.strip(),
-    "mojo": """
-        (function_definition) @function
-        (class_definition) @class
-    """,
+    "bash": "(function_definition) @function",
     "c": """
         (function_definition) @function
         (struct_specifier) @class
@@ -88,11 +84,54 @@ QUERIES = {
         (class_specifier) @class
         (struct_specifier) @class
     """,
+    "csharp": """
+        (method_declaration) @function
+        (constructor_declaration) @function
+        (class_declaration) @class
+        (interface_declaration) @class
+        (struct_declaration) @class
+    """,
+    "elixir": "(call) @function",
+    "go": """
+        (function_declaration) @function
+        (method_declaration) @function
+        (type_declaration) @class
+    """,
     "java": """
         (method_declaration) @function
         (constructor_declaration) @function
         (class_declaration) @class
         (interface_declaration) @class
+    """,
+    "javascript": """
+        (function_declaration) @function
+        (class_declaration) @class
+        (arrow_function) @function
+    """,
+    "json": "(pair) @item",
+    "kotlin": """
+        (function_declaration) @function
+        (class_declaration) @class
+        (object_declaration) @class
+    """,
+    "lua": """
+        (function_declaration) @function
+        (function_definition) @function
+    """,
+    "mojo": """
+        (function_definition) @function
+        (class_definition) @class
+    """,
+    "php": """
+        (function_definition) @function
+        (method_declaration) @function
+        (class_declaration) @class
+        (interface_declaration) @class
+        (trait_declaration) @class
+    """,
+    "python": """
+        (function_definition) @function
+        (class_definition) @class
     """,
     "ruby": """
         (method) @function
@@ -100,11 +139,32 @@ QUERIES = {
         (class) @class
         (module) @class
     """,
-    "csharp": """
-        (method_declaration) @function
-        (constructor_declaration) @function
+    "rust": """
+        (function_item) @function
+        (impl_item) @class
+        (struct_item) @class
+        (trait_item) @class
+        (enum_item) @class
+    """,
+    "svelte": "(script_element) @class",
+    "swift": """
+        (function_declaration) @function
+        (class_declaration) @class
+        (protocol_declaration) @class
+    """,
+    "toml": """
+        (table) @item
+        (pair) @item
+    """,
+    "typescript": """
+        (function_declaration) @function
         (class_declaration) @class
         (interface_declaration) @class
+        (arrow_function) @function
+    """,
+    "yaml": "(block_mapping_pair) @item",
+    "zig": """
+        (function_declaration) @function
         (struct_declaration) @class
     """,
 }
@@ -134,24 +194,40 @@ class ContextExtractor:
     def _ext_to_lang_name(self, ext: str) -> Optional[str]:
         """Map file extension to language name for queries."""
         ext_map = {
-            ".py": "python",
+            ".bash": "bash",
+            ".c": "c",
+            ".cc": "cpp",
+            ".cpp": "cpp",
+            ".cs": "csharp",
+            ".cxx": "cpp",
+            ".ex": "elixir",
+            ".exs": "elixir",
+            ".go": "go",
+            ".h": "c",
+            ".hh": "cpp",
+            ".hpp": "cpp",
+            ".java": "java",
             ".js": "javascript",
+            ".json": "json",
             ".jsx": "javascript",
+            ".kt": "kotlin",
+            ".kts": "kotlin",
+            ".lua": "lua",
+            ".mojo": "mojo",
+            ".php": "php",
+            ".py": "python",
+            ".rb": "ruby",
+            ".rs": "rust",
+            ".sh": "bash",
+            ".svelte": "svelte",
+            ".swift": "swift",
+            ".toml": "toml",
             ".ts": "typescript",
             ".tsx": "typescript",
-            ".rs": "rust",
-            ".go": "go",
-            ".c": "c",
-            ".h": "c",
-            ".cpp": "cpp",
-            ".cc": "cpp",
-            ".cxx": "cpp",
-            ".hpp": "cpp",
-            ".hh": "cpp",
-            ".java": "java",
-            ".rb": "ruby",
-            ".cs": "csharp",
-            ".mojo": "mojo",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".zig": "zig",
+            ".zsh": "bash",
             ".🔥": "mojo",
         }
         return ext_map.get(ext)
@@ -261,7 +337,12 @@ class ContextExtractor:
             seen_ranges.add(rng)
 
             name = "anonymous"
-            name_types = ("identifier", "name", "field_identifier", "type_identifier")
+            name_types = (
+                "identifier", "name", "field_identifier", "type_identifier",
+                "constant",  # Ruby
+                "simple_identifier",  # Swift
+                "word",  # Bash
+            )
             # Search direct children first
             for child in node.children:
                 if child.type in name_types:

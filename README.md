@@ -68,7 +68,7 @@ cache_dir = "~/.cache/hygrep"  # Custom model cache (default: shared HF cache)
 
 ## Supported Languages
 
-Python, JavaScript, TypeScript, Go, Rust, C, C++, Java, Ruby, C#, Mojo
+Bash, C, C++, C#, Elixir, Go, Java, JavaScript, JSON, Kotlin, Lua, Mojo, PHP, Python, Ruby, Rust, Svelte, Swift, TOML, TypeScript, YAML, Zig
 
 ## How it works
 
