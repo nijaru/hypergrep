@@ -3,15 +3,13 @@
 import json
 import os
 import sys
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import onnxruntime as ort
 from tokenizers import Tokenizer
-from concurrent.futures import ThreadPoolExecutor
 
 from .extractor import ContextExtractor
-
 
 MODEL_REPO = "mixedbread-ai/mxbai-rerank-xsmall-v1"
 MODEL_FILE = "onnx/model_quantized.onnx"
@@ -27,8 +25,9 @@ def ensure_models(model_path: str, tokenizer_path: str):
 
     print("Downloading AI models (~83MB)...", file=sys.stderr)
     try:
-        from huggingface_hub import hf_hub_download
         import shutil
+
+        from huggingface_hub import hf_hub_download
 
         model_dir = os.path.dirname(model_path)
         if model_dir and not os.path.exists(model_dir):
@@ -118,10 +117,14 @@ class Reranker:
         # Auto-detect GPU providers with fallback
         providers = get_execution_providers()
         try:
-            self.session = ort.InferenceSession(model_path, sess_options, providers=providers)
+            self.session = ort.InferenceSession(
+                model_path, sess_options, providers=providers
+            )
         except Exception:
             # GPU provider failed, fall back to CPU silently
-            self.session = ort.InferenceSession(model_path, sess_options, providers=['CPUExecutionProvider'])
+            self.session = ort.InferenceSession(
+                model_path, sess_options, providers=["CPUExecutionProvider"]
+            )
         self.provider = self.session.get_providers()[0]
 
     def search(
@@ -175,6 +178,8 @@ class Reranker:
         # 2. Reranking Phase (Batched)
         BATCH_SIZE = 32
         all_logits = []
+        input_names = [x.name for x in self.session.get_inputs()]
+        use_token_type_ids = len(input_names) > 2
 
         for i in range(0, len(candidates), BATCH_SIZE):
             batch = candidates[i : i + BATCH_SIZE]
@@ -184,14 +189,13 @@ class Reranker:
 
             input_ids = np.array([e.ids for e in encodings], dtype=np.int64)
             attention_mask = np.array([e.attention_mask for e in encodings], dtype=np.int64)
-            token_type_ids = np.array([e.type_ids for e in encodings], dtype=np.int64)
 
-            input_names = [x.name for x in self.session.get_inputs()]
             inputs = {
                 input_names[0]: input_ids,
                 input_names[1]: attention_mask,
             }
-            if len(input_names) > 2:
+            if use_token_type_ids:
+                token_type_ids = np.array([e.type_ids for e in encodings], dtype=np.int64)
                 inputs[input_names[2]] = token_type_ids
 
             res = self.session.run(None, inputs)

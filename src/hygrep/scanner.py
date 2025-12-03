@@ -3,7 +3,6 @@
 import os
 import re
 from pathlib import Path
-from typing import Dict
 
 # Directories to always skip
 IGNORED_DIRS = frozenset({
@@ -38,7 +37,7 @@ def _is_binary_content(content: bytes, check_size: int = 8192) -> bool:
     return b"\x00" in content[:check_size]
 
 
-def scan(root: str, pattern: str, include_hidden: bool = False) -> Dict[str, str]:
+def scan(root: str, pattern: str, include_hidden: bool = False) -> dict[str, str]:
     """
     Scan directory tree for files matching regex pattern.
 
@@ -59,19 +58,21 @@ def scan(root: str, pattern: str, include_hidden: bool = False) -> Dict[str, str
     try:
         regex = re.compile(pattern, re.IGNORECASE)
     except re.error as e:
-        raise ValueError(f"Invalid regex pattern: {e}")
+        raise ValueError(f"Invalid regex pattern: {e}") from e
 
-    results = {}
-    visited = set()
+    results: dict[str, str] = {}
+    visited: set[str] = set()
 
-    for dirpath, dirnames, filenames in os.walk(root_path, followlinks=False):
+    for dirpath, dirnames, filenames in os.walk(str(root_path), followlinks=False):
         # Resolve to catch symlink loops
         try:
             real_path = os.path.realpath(dirpath)
             if real_path in visited:
+                dirnames.clear()  # Don't descend
                 continue
             visited.add(real_path)
         except OSError:
+            dirnames.clear()
             continue
 
         # Filter directories in-place
@@ -91,7 +92,7 @@ def scan(root: str, pattern: str, include_hidden: bool = False) -> Dict[str, str
             if ext.lower() in BINARY_EXTENSIONS:
                 continue
 
-            # Skip lock files by pattern (e.g., package-lock.json)
+            # Skip lock files by pattern
             if filename.endswith("-lock.json"):
                 continue
 
@@ -99,8 +100,7 @@ def scan(root: str, pattern: str, include_hidden: bool = False) -> Dict[str, str
 
             try:
                 # Skip large files
-                stat = os.stat(filepath)
-                if stat.st_size > MAX_FILE_SIZE:
+                if os.path.getsize(filepath) > MAX_FILE_SIZE:
                     continue
 
                 # Read and check content

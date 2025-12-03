@@ -76,3 +76,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
+
+[tool.ty]
+# Ignore unresolved imports for optional/dynamic modules
+[tool.ty.rules]
+unresolved-import = "ignore"  # tomli fallback, _scanner extension
+possibly-missing-attribute = "ignore"  # onnxruntime lacks stubs

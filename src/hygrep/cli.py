@@ -15,7 +15,7 @@ except ImportError:
 import pathspec
 
 from . import __version__
-from .reranker import _models_valid, get_execution_providers, MODEL_REPO
+from .reranker import MODEL_REPO, _models_valid, get_execution_providers
 
 # Config file location
 CONFIG_PATH = Path.home() / ".config" / "hygrep" / "config.toml"
@@ -49,7 +49,7 @@ def show_info():
         size_mb = os.path.getsize(model_path) / 1024 / 1024
         print(f"Models:    OK ({size_mb:.0f}MB)")
     else:
-        print(f"Models:    Not installed (run any search to download)")
+        print("Models:    Not installed (run any search to download)")
 
     # Check device/provider
     providers = get_execution_providers()
@@ -61,7 +61,8 @@ def show_info():
 
     # Check scanner
     try:
-        from ._scanner import scan
+        from ._scanner import scan  # noqa: F401
+
         print("Scanner:   OK (Mojo native)")
     except ImportError:
         print("Scanner:   OK (Python fallback)")
@@ -78,7 +79,7 @@ def show_info():
     if CONFIG_PATH.exists():
         print(f"Config:    {CONFIG_PATH}")
     else:
-        print(f"Config:    (none)")
+        print("Config:    (none)")
 
     print()
     print(f"Model: {MODEL_REPO}")
@@ -139,11 +140,14 @@ _hygrep() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="-n -t -C -q -v -h --json --fast --quiet --version --help --type --context --max-candidates --color --no-ignore --stats --min-score --exclude --hidden"
+    opts="-n -t -C -q -v -h --json --fast --quiet --version --help"
+    opts="$opts --type --context --max-candidates --color --no-ignore"
+    opts="$opts --stats --min-score --exclude --hidden"
 
     case "${prev}" in
         -t|--type)
-            COMPREPLY=( $(compgen -W "py js ts rust go mojo java c cpp cs rb php sh md json yaml toml" -- ${cur}) )
+            local types="py js ts rust go mojo java c cpp cs rb php sh md json yaml toml"
+            COMPREPLY=( $(compgen -W "${types}" -- ${cur}) )
             return 0
             ;;
         --color)
@@ -172,8 +176,8 @@ _hygrep() {
     local -a opts
     opts=(
         '-n[Number of results]:count:'
-        '-t[Filter by file type]:type:(py js ts rust go mojo java c cpp cs rb php sh md json yaml toml)'
-        '--type[Filter by file type]:type:(py js ts rust go mojo java c cpp cs rb php sh md json yaml toml)'
+        '-t[Filter by file type]:type:(py js ts rust go mojo java c cpp cs rb)'
+        '--type[Filter by file type]:type:(py js ts rust go mojo java c cpp cs rb)'
         '-C[Show N lines of context]:lines:'
         '--context[Show N lines of context]:lines:'
         '-q[Suppress progress messages]'
@@ -200,7 +204,7 @@ _hygrep "$@"
 
 FISH_COMPLETION = '''
 complete -c hygrep -s n -d "Number of results"
-complete -c hygrep -s t -l type -d "Filter by file type" -xa "py js ts rust go mojo java c cpp cs rb php sh md json yaml toml"
+complete -c hygrep -s t -l type -d "File type" -xa "py js ts rust go mojo java c cpp cs rb"
 complete -c hygrep -s C -l context -d "Show N lines of context"
 complete -c hygrep -s q -l quiet -d "Suppress progress messages"
 complete -c hygrep -s v -l version -d "Show version"
@@ -291,7 +295,8 @@ def main():
         if not args.no_ignore and config.get("no_ignore", False):
             args.no_ignore = True
         if not args.exclude and "exclude" in config:
-            args.exclude = config["exclude"] if isinstance(config["exclude"], list) else [config["exclude"]]
+            exc = config["exclude"]
+            args.exclude = exc if isinstance(exc, list) else [exc]
 
     # Handle completions
     if args.completions:
@@ -469,7 +474,11 @@ def main():
         sys.exit(EXIT_NO_MATCH)
 
     # Output results with optional color
-    c = Colors if color else type("NoColor", (), {k: "" for k in dir(Colors) if not k.startswith("_")})()
+    if color:
+        c = Colors
+    else:
+        no_color_attrs = {k: "" for k in dir(Colors) if not k.startswith("_")}
+        c = type("NoColor", (), no_color_attrs)()
     for item in results:
         file = item["file"]
         name = item["name"]

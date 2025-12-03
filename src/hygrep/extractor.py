@@ -1,16 +1,18 @@
 import os
 import re
-from typing import List, Dict, Any, Optional
-import tree_sitter_python
-import tree_sitter_javascript
-import tree_sitter_typescript
-import tree_sitter_rust
-import tree_sitter_go
+from typing import Any, Dict, List, Optional
+
 import tree_sitter_c
-import tree_sitter_cpp
-import tree_sitter_java
-import tree_sitter_ruby
 import tree_sitter_c_sharp
+import tree_sitter_cpp
+import tree_sitter_go
+import tree_sitter_java
+import tree_sitter_javascript
+import tree_sitter_python
+import tree_sitter_ruby
+import tree_sitter_rust
+import tree_sitter_typescript
+
 try:
     import tree_sitter_mojo
     HAS_MOJO = True
@@ -129,24 +131,32 @@ class ContextExtractor:
 
     def _ext_to_lang_name(self, ext: str) -> Optional[str]:
         """Map file extension to language name for queries."""
-        if ext == ".py": return "python"
-        if ext in [".js", ".jsx"]: return "javascript"
-        if ext in [".ts", ".tsx"]: return "typescript"
-        if ext == ".rs": return "rust"
-        if ext == ".go": return "go"
-        if ext in [".c", ".h"]: return "c"
-        if ext in [".cpp", ".cc", ".cxx", ".hpp", ".hh"]: return "cpp"
-        if ext == ".java": return "java"
-        if ext == ".rb": return "ruby"
-        if ext == ".cs": return "csharp"
-        if ext in [".mojo", ".🔥"]: return "mojo"
-        return None
+        ext_map = {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".rs": "rust",
+            ".go": "go",
+            ".c": "c",
+            ".h": "c",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
+            ".hpp": "cpp",
+            ".hh": "cpp",
+            ".java": "java",
+            ".rb": "ruby",
+            ".cs": "csharp",
+            ".mojo": "mojo",
+            ".🔥": "mojo",
+        }
+        return ext_map.get(ext)
 
-    def get_language_for_file(self, path: str) -> Optional[Any]:
-        _, ext = os.path.splitext(path)
-        return self.languages.get(ext)
-
-    def _fallback_sliding_window(self, file_path: str, content: str, query: str) -> List[Dict[str, Any]]:
+    def _fallback_sliding_window(
+        self, file_path: str, content: str, query: str
+    ) -> List[Dict[str, Any]]:
         """
         Finds matches of 'query' in 'content' and returns windows +/- 5 lines.
         """
@@ -166,14 +176,15 @@ class ContextExtractor:
                         "end_line": end,
                         "content": window
                     })
-                    if len(matches) >= 5: break
+                    if len(matches) >= 5:
+                        break
         except Exception:
             # If regex fails, return head
             pass
-            
+
         if matches:
             return matches
-        
+
         # Return Head (First 50 lines)
         end_head = min(len(lines), 50)
         return [{
@@ -184,23 +195,25 @@ class ContextExtractor:
             "content": "\n".join(lines[:end_head])
         }]
 
-    def extract(self, file_path: str, query: str, content: Optional[str] = None) -> List[Dict[str, Any]]:
+    def extract(
+        self, file_path: str, query: str, content: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         if content is None:
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-            except Exception as e:
+            except Exception:
                 return []
 
         _, ext = os.path.splitext(file_path)
         parser = self.parsers.get(ext)
-        
+
         if not parser:
             return self._fallback_sliding_window(file_path, content, query)
 
         # Parse
-        tree = parser.parse(bytes(content, "utf8"))
-        
+        tree = parser.parse(content.encode())
+
         # Run Query (use cached query object)
         q_obj = self.queries.get(ext)
         if not q_obj:
@@ -213,7 +226,7 @@ class ContextExtractor:
         except Exception as e:
             print(f"Query error for {file_path}: {e}")
             return self._fallback_sliding_window(file_path, content, query)
-        
+
         blocks = []
         seen_ranges = set()
 
@@ -230,11 +243,11 @@ class ContextExtractor:
         for item in iterator:
             node = None
             tag = "unknown"
-            
+
             if isinstance(item, tuple):
                 node = item[0]
                 tag = item[1]
-            elif hasattr(item, 'type'): 
+            elif hasattr(item, 'type'):
                 node = item
                 tag = "match"
             else:
@@ -250,7 +263,7 @@ class ContextExtractor:
                 if child.type == "identifier" or child.type == "name":
                     name = child.text.decode("utf8")
                     break
-            
+
             blocks.append({
                 "type": tag,
                 "name": name,
@@ -258,7 +271,7 @@ class ContextExtractor:
                 "end_line": node.end_point[0],
                 "content": content[node.start_byte:node.end_byte]
             })
-            
+
         if not blocks:
              return self._fallback_sliding_window(file_path, content, query)
 
