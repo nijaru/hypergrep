@@ -11,7 +11,11 @@ import tree_sitter_cpp
 import tree_sitter_java
 import tree_sitter_ruby
 import tree_sitter_c_sharp
-import tree_sitter_mojo
+try:
+    import tree_sitter_mojo
+    HAS_MOJO = True
+except ImportError:
+    HAS_MOJO = False
 from tree_sitter import Language, Parser, Query, QueryCursor
 
 # Map extensions to language capsules
@@ -33,9 +37,12 @@ LANGUAGE_CAPSULES = {
     ".java": tree_sitter_java.language(),
     ".rb": tree_sitter_ruby.language(),
     ".cs": tree_sitter_c_sharp.language(),
-    ".mojo": tree_sitter_mojo.language(),
-    ".🔥": tree_sitter_mojo.language(),  # Mojo's emoji extension
 }
+
+# Add Mojo if available
+if HAS_MOJO:
+    LANGUAGE_CAPSULES[".mojo"] = tree_sitter_mojo.language()
+    LANGUAGE_CAPSULES[".🔥"] = tree_sitter_mojo.language()
 
 QUERIES = {
     "python": """
