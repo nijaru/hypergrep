@@ -5,6 +5,8 @@
 | Phase | 9 (Released) | 2025-12-03 |
 | Version | 0.0.4 (PyPI) | 2025-12-03 |
 | PyPI | https://pypi.org/project/hygrep/ | 2025-12-03 |
+| CLI | `hhg` (primary), `hygrep` (alias) | 2025-12-03 |
+| Languages | 22 | 2025-12-03 |
 | Perf | ~20k files/sec (Mojo) | 2025-12-02 |
 | Inference | ~2s/100 candidates (CPU) | 2025-12-02 |
 | Mojo | v25.7 | 2025-12-01 |
@@ -12,9 +14,17 @@
 
 ## Active Work
 
-None. v0.0.4 released.
+None.
 
 ## Completed (Recent)
+
+### Code Review Fixes (2025-12-03)
+- Fix 128-byte regex memory leak (UnsafePointer[UInt8, MutOrigin.external])
+- Add 11 new language grammars (22 total): Bash, PHP, Kotlin, Lua, Swift, Elixir, Zig, Svelte, YAML, TOML, JSON
+- Add Python fallback scanner tests (18 tests)
+- Fix config load errors reporting to stderr
+- Fix regex escaping in query expansion
+- Fix hatch_build.py to error on unsupported platforms
 
 ### v0.0.4 Release (2025-12-03)
 - Fix name extraction for Go methods and Rust traits/structs/enums
@@ -57,7 +67,6 @@ None.
 
 ## Known Issues
 
-- 128-byte regex memory leak (Mojo v25.7 limitation)
 - Mojo native scanner requires MAX/Mojo runtime (wheels use Python fallback)
 
 ## GPU Support
