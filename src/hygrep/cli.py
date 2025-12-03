@@ -148,13 +148,20 @@ def is_regex_pattern(query: str) -> bool:
 
 BASH_COMPLETION = '''
 _hygrep() {
-    local cur prev opts
+    local cur prev opts cmds
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     opts="-n -t -C -q -v -h --json --fast --quiet --version --help"
     opts="$opts --type --context --max-candidates --color --no-ignore"
-    opts="$opts --stats --min-score --exclude --hidden"
+    opts="$opts --stats --min-score --exclude --hidden --force"
+    cmds="info model"
+
+    # Handle 'hygrep model' subcommands
+    if [[ "${COMP_WORDS[1]}" == "model" ]]; then
+        COMPREPLY=( $(compgen -W "install clean --force" -- ${cur}) )
+        return 0
+    fi
 
     case "${prev}" in
         -t|--type)
@@ -176,6 +183,12 @@ _hygrep() {
         return 0
     fi
 
+    # Complete commands or directories
+    if [[ ${COMP_CWORD} -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "${cmds}" -- ${cur}) $(compgen -d -- ${cur}) )
+        return 0
+    fi
+
     COMPREPLY=( $(compgen -d -- ${cur}) )
 }
 complete -F _hygrep hygrep
@@ -185,7 +198,7 @@ ZSH_COMPLETION = '''
 #compdef hygrep
 
 _hygrep() {
-    local -a opts
+    local -a opts cmds
     opts=(
         '-n[Number of results]:count:'
         '-t[Filter by file type]:type:(py js ts rust go mojo java c cpp cs rb)'
@@ -207,14 +220,40 @@ _hygrep() {
         '--min-score[Filter results below score]:score:'
         '--exclude[Exclude files matching pattern]:pattern:'
         '--hidden[Include hidden files and directories]'
+        '--force[Force re-download model]'
     )
-    _arguments -s $opts '*:directory:_files -/'
+    cmds=(
+        'info:Show installation status'
+        'model:Manage model (install, clean)'
+    )
+
+    if [[ ${words[2]} == "model" ]]; then
+        local -a model_cmds
+        model_cmds=('install:Download model' 'clean:Remove cached model')
+        _describe -t commands 'model command' model_cmds
+        return
+    fi
+
+    _arguments -s $opts '1:command:->cmds' '*:directory:_files -/'
+
+    case $state in
+        cmds) _describe -t commands 'command' cmds ;;
+    esac
 }
 
 _hygrep "$@"
 '''
 
 FISH_COMPLETION = '''
+# Commands
+complete -c hygrep -n "__fish_use_subcommand" -a "info" -d "Show installation status"
+complete -c hygrep -n "__fish_use_subcommand" -a "model" -d "Manage model"
+
+# Model subcommands
+complete -c hygrep -n "__fish_seen_subcommand_from model" -a "install" -d "Download model"
+complete -c hygrep -n "__fish_seen_subcommand_from model" -a "clean" -d "Remove cached model"
+
+# Options
 complete -c hygrep -s n -d "Number of results"
 complete -c hygrep -s t -l type -d "File type" -xa "py js ts rust go mojo java c cpp cs rb"
 complete -c hygrep -s C -l context -d "Show N lines of context"
@@ -230,6 +269,7 @@ complete -c hygrep -l stats -d "Show timing statistics"
 complete -c hygrep -l min-score -d "Filter results below score"
 complete -c hygrep -l exclude -d "Exclude files matching pattern"
 complete -c hygrep -l hidden -d "Include hidden files and directories"
+complete -c hygrep -l force -d "Force re-download model"
 '''
 
 
