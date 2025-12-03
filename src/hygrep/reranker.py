@@ -233,11 +233,7 @@ def get_execution_providers() -> list:
         "CPUExecutionProvider",  # Fallback (fast enough for small model)
     ]
 
-    providers = []
-    for p in preferred:
-        if p in available:
-            providers.append(p)
-
+    providers = [p for p in preferred if p in available]
     return providers if providers else ["CPUExecutionProvider"]
 
 
@@ -267,12 +263,12 @@ class Reranker:
         except Exception:
             # GPU provider failed, fall back to CPU silently
             self.session = ort.InferenceSession(
-                model_path, sess_options, providers=["CPUExecutionProvider"]
+                model_path, sess_options, providers=["CPUExecutionProvider"],
             )
         self.provider = self.session.get_providers()[0]
 
     def search(
-        self, query: str, file_contents: dict, top_k: int = 10, max_candidates: int = 100
+        self, query: str, file_contents: dict, top_k: int = 10, max_candidates: int = 100,
     ) -> list:
         """
         Full pipeline: Extract -> Rerank.
@@ -309,7 +305,7 @@ class Reranker:
                         "start_line": block["start_line"],
                         "content": block["content"],
                         "score_text": text_to_score,
-                    }
+                    },
                 )
 
         if not candidates:

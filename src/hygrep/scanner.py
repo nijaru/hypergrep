@@ -18,7 +18,7 @@ IGNORED_DIRS = frozenset(
         ".vscode",
         ".idea",
         "__pycache__",
-    }
+    },
 )
 
 # Binary file extensions to skip
@@ -85,7 +85,7 @@ BINARY_EXTENSIONS = frozenset(
         ".safetensors",
         # Lock files
         ".lock",
-    }
+    },
 )
 
 MAX_FILE_SIZE = 1_000_000  # 1MB

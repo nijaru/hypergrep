@@ -20,7 +20,7 @@ def test_reranker():
     file_contents = {
         "test_auth.py": (
             "def login():\n    # User login logic\n    pass\n\ndef logout():\n    pass\n"
-        )
+        ),
     }
 
     print("Running search...")

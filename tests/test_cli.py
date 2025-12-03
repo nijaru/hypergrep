@@ -7,6 +7,8 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.getcwd(), "src"))
 
+import contextlib
+
 from hygrep import cli
 
 
@@ -21,7 +23,7 @@ def test_exit_codes():
         sys.argv = ["hygrep", "hello", tmpdir, "-q", "--fast"]
         try:
             cli.main()
-            assert False, "Should have called sys.exit"
+            raise AssertionError("Should have called sys.exit")
         except SystemExit as e:
             assert e.code == 0, f"Expected exit 0 on match, got {e.code}"
 
@@ -29,7 +31,7 @@ def test_exit_codes():
         sys.argv = ["hygrep", "nonexistent_xyz", tmpdir, "-q", "--fast"]
         try:
             cli.main()
-            assert False, "Should have called sys.exit"
+            raise AssertionError("Should have called sys.exit")
         except SystemExit as e:
             assert e.code == 1, f"Expected exit 1 on no match, got {e.code}"
 
@@ -37,7 +39,7 @@ def test_exit_codes():
         sys.argv = ["hygrep", "test", "/nonexistent/path", "-q"]
         try:
             cli.main()
-            assert False, "Should have called sys.exit"
+            raise AssertionError("Should have called sys.exit")
         except SystemExit as e:
             assert e.code == 2, f"Expected exit 2 on error, got {e.code}"
 
@@ -56,11 +58,8 @@ def test_json_output(capsys=None):
 
         sys.argv = ["hygrep", "login", tmpdir, "--json", "--fast", "-q"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), contextlib.suppress(SystemExit):
+            cli.main()
 
         out = stdout.getvalue()
         results = json.loads(out)
@@ -87,22 +86,16 @@ def test_exclude_patterns():
         # Without exclude
         sys.argv = ["hygrep", "main", tmpdir, "--json", "--fast", "-q"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), contextlib.suppress(SystemExit):
+            cli.main()
         results = json.loads(stdout.getvalue())
         assert len(results) >= 2, f"Expected >= 2 results, got {len(results)}"
 
         # With exclude
         sys.argv = ["hygrep", "main", tmpdir, "--json", "--fast", "-q", "--exclude", "test_*"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), contextlib.suppress(SystemExit):
+            cli.main()
         results = json.loads(stdout.getvalue())
         # Should have fewer results after exclusion
         for r in results:
@@ -124,11 +117,8 @@ def test_type_filter():
 
         sys.argv = ["hygrep", "hello", tmpdir, "--json", "--fast", "-q", "-t", "py"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), contextlib.suppress(SystemExit):
+            cli.main()
 
         results = json.loads(stdout.getvalue())
         assert len(results) >= 1, f"Expected >= 1 Python result, got {len(results)}"
@@ -209,11 +199,8 @@ def test_fast_mode():
 
         sys.argv = ["hygrep", "hello", tmpdir, "--fast", "--json", "-q"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), contextlib.suppress(SystemExit):
+            cli.main()
 
         results = json.loads(stdout.getvalue())
         assert len(results) >= 1

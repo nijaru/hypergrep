@@ -15,17 +15,16 @@ def get_platform_tag():
         # macOS
         if machine == "arm64":
             return "macosx_11_0_arm64"
-        else:
-            return "macosx_10_9_x86_64"
-    elif system == "linux":
+        return "macosx_10_9_x86_64"
+    if system == "linux":
         if machine == "x86_64":
             return "manylinux_2_17_x86_64"
-        elif machine == "aarch64":
+        if machine == "aarch64":
             return "manylinux_2_17_aarch64"
 
     raise RuntimeError(
         f"Unsupported platform: {system}/{machine}. "
-        "hygrep requires macOS (arm64/x86_64) or Linux (x86_64/aarch64)."
+        "hygrep requires macOS (arm64/x86_64) or Linux (x86_64/aarch64).",
     )
 
 

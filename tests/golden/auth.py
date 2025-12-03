@@ -3,22 +3,19 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
 
-    pass
 
 
 class SessionExpiredError(AuthenticationError):
     """Raised when session has expired."""
 
-    pass
 
 
-def hash_password(password: str, salt: Optional[bytes] = None) -> tuple[str, bytes]:
+def hash_password(password: str, salt: bytes | None = None) -> tuple[str, bytes]:
     """Hash password with PBKDF2-SHA256."""
     if salt is None:
         salt = secrets.token_bytes(32)
@@ -94,7 +91,7 @@ class UserManager:
             return True
         return False
 
-    def get_current_user(self, token: str) -> Optional[dict]:
+    def get_current_user(self, token: str) -> dict | None:
         """Get user from session token."""
         session = self._sessions.get(token)
         if not session or not validate_session(session):

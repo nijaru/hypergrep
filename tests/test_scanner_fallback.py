@@ -20,7 +20,7 @@ class TestScannerBasics:
 
             results = scan(tmpdir, "hello")
             assert len(results) == 1
-            assert "hello" in list(results.values())[0]
+            assert "hello" in next(iter(results.values()))
 
     def test_no_match(self):
         """Return empty dict when no matches."""
@@ -57,7 +57,7 @@ class TestScannerBasics:
 
             try:
                 scan(tmpdir, "[invalid")
-                assert False, "Should raise ValueError"
+                raise AssertionError("Should raise ValueError")
             except ValueError as e:
                 assert "Invalid regex" in str(e)
 
@@ -81,7 +81,7 @@ class TestIgnoredDirs:
             results = scan(tmpdir, "hello")
             # Should only find main.py, not node_modules/test.js
             assert len(results) == 1
-            assert any("main.py" in k for k in results.keys())
+            assert any("main.py" in k for k in results)
 
     def test_all_ignored_dirs(self):
         """All IGNORED_DIRS are skipped."""
@@ -109,7 +109,7 @@ class TestHiddenFiles:
 
             results = scan(tmpdir, "secret")
             assert len(results) == 1
-            assert ".hidden" not in list(results.keys())[0]
+            assert ".hidden" not in next(iter(results.keys()))
 
     def test_hidden_files_included_with_flag(self):
         """Hidden files included when flag set."""
@@ -136,7 +136,7 @@ class TestBinaryFiles:
 
             results = scan(tmpdir, "match_me")
             assert len(results) == 1
-            assert "test.py" in list(results.keys())[0]
+            assert "test.py" in next(iter(results.keys()))
 
     def test_binary_content_detected(self):
         """Detect binary content by null bytes."""
@@ -170,7 +170,7 @@ class TestLargeFiles:
 
             results = scan(tmpdir, "match_me")
             assert len(results) == 1
-            assert "small.txt" in list(results.keys())[0]
+            assert "small.txt" in next(iter(results.keys()))
 
 
 class TestSymlinks:
@@ -206,7 +206,7 @@ class TestPathValidation:
         """Raise on nonexistent path."""
         try:
             scan("/nonexistent/path", "test")
-            assert False, "Should raise ValueError"
+            raise AssertionError("Should raise ValueError")
         except ValueError as e:
             assert "does not exist" in str(e)
 
@@ -219,7 +219,7 @@ class TestPathValidation:
 
             try:
                 scan(filepath, "test")
-                assert False, "Should raise ValueError"
+                raise AssertionError("Should raise ValueError")
             except ValueError as e:
                 assert "not a directory" in str(e)
 

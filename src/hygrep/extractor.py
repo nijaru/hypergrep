@@ -1,7 +1,7 @@
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tree_sitter_bash
 import tree_sitter_c
@@ -194,7 +194,7 @@ class ContextExtractor:
             except Exception as e:
                 print(f"Warning: Failed to load parser for {ext}: {e}", file=sys.stderr)
 
-    def _ext_to_lang_name(self, ext: str) -> Optional[str]:
+    def _ext_to_lang_name(self, ext: str) -> str | None:
         """Map file extension to language name for queries."""
         ext_map = {
             ".bash": "bash",
@@ -236,8 +236,8 @@ class ContextExtractor:
         return ext_map.get(ext)
 
     def _fallback_sliding_window(
-        self, file_path: str, content: str, query: str
-    ) -> List[Dict[str, Any]]:
+        self, file_path: str, content: str, query: str,
+    ) -> list[dict[str, Any]]:
         """
         Finds matches of 'query' in 'content' and returns windows +/- 5 lines.
         """
@@ -257,7 +257,7 @@ class ContextExtractor:
                             "start_line": start,
                             "end_line": end,
                             "content": window,
-                        }
+                        },
                     )
                     if len(matches) >= 5:
                         break
@@ -277,15 +277,15 @@ class ContextExtractor:
                 "start_line": 0,
                 "end_line": end_head,
                 "content": "\n".join(lines[:end_head]),
-            }
+            },
         ]
 
     def extract(
-        self, file_path: str, query: str, content: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, file_path: str, query: str, content: str | None = None,
+    ) -> list[dict[str, Any]]:
         if content is None:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
             except Exception:
                 return []
@@ -318,10 +318,8 @@ class ContextExtractor:
         iterator = []
         if isinstance(captures, dict):
             for tag_name, nodes in captures.items():
-                if not isinstance(nodes, list):
-                    nodes = [nodes]
-                for n in nodes:
-                    iterator.append((n, tag_name))
+                node_list = nodes if isinstance(nodes, list) else [nodes]
+                iterator.extend((n, tag_name) for n in node_list)
         else:
             iterator = captures
 
@@ -375,7 +373,7 @@ class ContextExtractor:
                     "start_line": node.start_point[0],
                     "end_line": node.end_point[0],
                     "content": content[node.start_byte : node.end_byte],
-                }
+                },
             )
 
         if not blocks:

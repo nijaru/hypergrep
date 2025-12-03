@@ -11,7 +11,7 @@ import io
 import json
 import os
 import sys
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, suppress
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.getcwd(), "src"))
@@ -21,7 +21,9 @@ from hygrep import cli
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
 
-def run_search(query: str, path: str = None, fast: bool = False, top_k: int = 10) -> list[dict]:
+def run_search(
+    query: str, path: str | None = None, fast: bool = False, top_k: int = 10,
+) -> list[dict]:
     """Run hygrep search and return results."""
     if path is None:
         path = str(GOLDEN_DIR)
@@ -32,11 +34,8 @@ def run_search(query: str, path: str = None, fast: bool = False, top_k: int = 10
 
     sys.argv = args
     stdout = io.StringIO()
-    with redirect_stdout(stdout):
-        try:
-            cli.main()
-        except SystemExit:
-            pass
+    with redirect_stdout(stdout), suppress(SystemExit):
+        cli.main()
 
     output = stdout.getvalue()
     if not output.strip():
@@ -44,7 +43,9 @@ def run_search(query: str, path: str = None, fast: bool = False, top_k: int = 10
     return json.loads(output)
 
 
-def result_contains(results: list[dict], expected_file: str, expected_name: str = None) -> bool:
+def result_contains(
+    results: list[dict], expected_file: str, expected_name: str | None = None,
+) -> bool:
     """Check if results contain expected file/name."""
     for r in results:
         if expected_file in r["file"]:

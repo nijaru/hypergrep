@@ -18,6 +18,12 @@ None.
 
 ## Completed (Recent)
 
+### Code Quality Fixes (2025-12-03)
+- Fix lint issues (line length in test_golden.py)
+- Fix loop variable shadowing in cli.py and extractor.py (PLW2901)
+- Use list comprehension/extend for better performance (PERF401)
+- All tests pass (22 languages + 18 scanner fallback + 21 golden tests)
+
 ### Code Review Fixes (2025-12-03)
 - Fix 128-byte regex memory leak (UnsafePointer[UInt8, MutOrigin.external])
 - Add 11 new language grammars (22 total): Bash, PHP, Kotlin, Lua, Swift, Elixir, Zig, Svelte, YAML, TOML, JSON

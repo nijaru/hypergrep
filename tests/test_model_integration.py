@@ -8,7 +8,7 @@ Not included in default test suite.
 import io
 import os
 import sys
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout, suppress
 
 sys.path.insert(0, os.path.join(os.getcwd(), "src"))
 
@@ -87,11 +87,8 @@ def test_model_clean_and_install():
         # Use "login" as query to match file content
         sys.argv = ["hygrep", "login", tmpdir, "--json", "-q"]
         stdout = io.StringIO()
-        with redirect_stdout(stdout):
-            try:
-                cli.main()
-            except SystemExit:
-                pass
+        with redirect_stdout(stdout), suppress(SystemExit):
+            cli.main()
 
         import json
 
@@ -111,10 +108,8 @@ def test_model_install_force():
     if not info_before["installed"]:
         print("Model not installed, installing first...")
         sys.argv = ["hygrep", "model", "install"]
-        try:
+        with suppress(SystemExit):
             cli.main()
-        except SystemExit:
-            pass
 
     # Force reinstall
     print("Running 'hygrep model install --force'...")

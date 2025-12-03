@@ -13,6 +13,8 @@ try:
 except ImportError:
     import tomli as tomllib  # Fallback for Python < 3.11
 
+import contextlib
+
 import pathspec
 
 from . import __version__
@@ -78,7 +80,7 @@ def show_info():
     try:
         from .extractor import LANGUAGE_CAPSULES
 
-        langs = [ext.lstrip(".") for ext in LANGUAGE_CAPSULES.keys() if not ext.startswith(".🔥")]
+        langs = [ext.lstrip(".") for ext in LANGUAGE_CAPSULES if not ext.startswith(".🔥")]
         print(f"Languages: {', '.join(langs)}")
     except ImportError:
         print("Languages: Error loading tree-sitter")
@@ -113,9 +115,7 @@ def use_color() -> bool:
     if os.environ.get("NO_COLOR"):
         return False
     # Check if stdout is a TTY
-    if not sys.stdout.isatty():
-        return False
-    return True
+    return sys.stdout.isatty()
 
 
 def load_gitignore(root: Path) -> pathspec.PathSpec | None:
@@ -127,10 +127,8 @@ def load_gitignore(root: Path) -> pathspec.PathSpec | None:
     while current != current.parent:
         gitignore = current / ".gitignore"
         if gitignore.exists():
-            try:
+            with contextlib.suppress(OSError, UnicodeDecodeError):
                 patterns.extend(gitignore.read_text().splitlines())
-            except (OSError, UnicodeDecodeError):
-                pass
         # Stop at git root
         if (current / ".git").exists():
             break
@@ -287,10 +285,10 @@ def main():
     parser.add_argument("-v", "--version", action="version", version=f"hygrep {__version__}")
     parser.add_argument("--fast", action="store_true", help="Skip neural reranking (instant grep)")
     parser.add_argument(
-        "-t", "--type", dest="file_types", help="Filter by file type (e.g., py,js,ts)"
+        "-t", "--type", dest="file_types", help="Filter by file type (e.g., py,js,ts)",
     )
     parser.add_argument(
-        "--max-candidates", type=int, default=100, help="Max candidates to rerank (default: 100)"
+        "--max-candidates", type=int, default=100, help="Max candidates to rerank (default: 100)",
     )
     parser.add_argument(
         "--color",
@@ -328,10 +326,10 @@ def main():
         help="Output shell completion script and exit",
     )
     parser.add_argument(
-        "--hidden", action="store_true", help="Include hidden files and directories"
+        "--hidden", action="store_true", help="Include hidden files and directories",
     )
     parser.add_argument(
-        "--force", action="store_true", help="Force re-download model (for 'hygrep model install')"
+        "--force", action="store_true", help="Force re-download model (for 'hygrep model install')",
     )
 
     args = parser.parse_args()
@@ -508,12 +506,12 @@ def main():
             "toml": [".toml"],
         }
         allowed_exts = set()
-        for t in args.file_types.split(","):
-            t = t.strip().lower()
-            if t in type_map:
-                allowed_exts.update(type_map[t])
+        for file_type in args.file_types.split(","):
+            ft = file_type.strip().lower()
+            if ft in type_map:
+                allowed_exts.update(type_map[ft])
             else:
-                allowed_exts.add(f".{t}")
+                allowed_exts.add(f".{ft}")
         file_contents = {
             k: v for k, v in file_contents.items() if any(k.endswith(ext) for ext in allowed_exts)
         }
@@ -539,17 +537,17 @@ def main():
         results = []
         for path, content in list(file_contents.items())[: args.n]:
             blocks = extractor.extract(path, args.query, content=content)
-            for block in blocks:
-                results.append(
-                    {
-                        "file": path,
-                        "type": block["type"],
-                        "name": block["name"],
-                        "start_line": block["start_line"],
-                        "content": block["content"],
-                        "score": 0.0,  # No score in fast mode
-                    }
-                )
+            results.extend(
+                {
+                    "file": path,
+                    "type": block["type"],
+                    "name": block["name"],
+                    "start_line": block["start_line"],
+                    "content": block["content"],
+                    "score": 0.0,  # No score in fast mode
+                }
+                for block in blocks
+            )
         results = results[: args.n]
     else:
         if not args.quiet and not args.json:
@@ -559,7 +557,7 @@ def main():
 
         reranker = Reranker()
         results = reranker.search(
-            args.query, file_contents, top_k=args.n, max_candidates=args.max_candidates
+            args.query, file_contents, top_k=args.n, max_candidates=args.max_candidates,
         )
 
     stats["rerank_ms"] = int((time.perf_counter() - rerank_start) * 1000)
