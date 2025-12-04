@@ -60,6 +60,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+semantic = [
+    "omendb>=0.0.1a1",
+]
 dev = [
     "pytest>=7.0",
     "ruff>=0.1",

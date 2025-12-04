@@ -222,6 +222,35 @@ def search(
             err_console.print("[yellow]Usage:[/] hhg model [install|clean|status]")
             err_console.print("Run [cyan]hhg model --help[/] for more info")
         raise typer.Exit()
+    if query == "index":
+        # Handle index subcommands - parse from sys.argv since Typer mangles args
+        args = sys.argv[1:]  # Skip program name
+        idx = args.index("index") if "index" in args else 0
+        remaining = args[idx + 1 :]  # Everything after "index"
+
+        subcmd = remaining[0] if remaining else ""
+        target_path = Path(remaining[1]) if len(remaining) > 1 else Path(".")
+
+        if subcmd == "build":
+            index_build(target_path, quiet=quiet)
+        elif subcmd == "status":
+            index_status(target_path)
+        elif subcmd == "clear":
+            index_clear(target_path)
+        elif subcmd == "search":
+            # For search: hhg index search <query> [path]
+            if len(remaining) >= 2:
+                search_query = remaining[1]
+                search_path = Path(remaining[2]) if len(remaining) > 2 else Path(".")
+                index_search(
+                    search_query, search_path, n=n, json_output=json_output, context=context
+                )
+            else:
+                err_console.print("[yellow]Usage:[/] hhg index search <query> [path]")
+        else:
+            err_console.print("[yellow]Usage:[/] hhg index [build|status|clear|search]")
+            err_console.print("Run [cyan]hhg index --help[/] for more info")
+        raise typer.Exit()
 
     # No query = show help panel
     if not query:
@@ -558,6 +587,164 @@ def model_status():
 
 
 # ============================================================================
+# Index Commands (Semantic Search)
+# ============================================================================
+
+index_app = typer.Typer(
+    help="Manage semantic search index",
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(index_app, name="index")
+
+
+@index_app.command("build")
+def index_build(
+    path: Annotated[Path, typer.Argument(help="Directory to index")] = Path("."),
+    quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Suppress progress")] = False,
+):
+    """Build semantic search index for a directory."""
+    try:
+        from .semantic import SemanticIndex
+    except ImportError as e:
+        err_console.print(f"[red]Error:[/] {e}")
+        err_console.print("[dim]Install omendb: pip install omendb[/]")
+        raise typer.Exit(EXIT_ERROR)
+
+    path = path.resolve()
+    if not path.exists():
+        err_console.print(f"[red]Error:[/] Path does not exist: {path}")
+        raise typer.Exit(EXIT_ERROR)
+
+    # Scan for files
+    from .scanner import scan
+
+    if not quiet:
+        with err_console.status("[bold blue]Scanning files...", spinner="dots"):
+            files = scan(str(path), ".", include_hidden=False)
+    else:
+        files = scan(str(path), ".", include_hidden=False)
+
+    if not files:
+        err_console.print("[yellow]No files found to index[/]")
+        raise typer.Exit(EXIT_NO_MATCH)
+
+    # Build index
+    index = SemanticIndex(path)
+
+    def on_progress(current: int, total: int, msg: str):
+        if not quiet:
+            err_console.print(f"[dim]{msg} ({current}/{total})[/]", end="\r")
+
+    if not quiet:
+        console.print(f"[bold]Indexing {len(files)} files...[/]")
+
+    stats = index.index(files, on_progress=on_progress if not quiet else None)
+
+    if not quiet:
+        console.print()  # Clear progress line
+        console.print(
+            f"[green]✓[/] Indexed {stats['blocks']} code blocks from {stats['files']} files"
+        )
+        if stats["skipped"]:
+            console.print(f"[dim]  Skipped {stats['skipped']} unchanged files[/]")
+        if stats["errors"]:
+            console.print(f"[yellow]  {stats['errors']} files had errors[/]")
+
+
+@index_app.command("status")
+def index_status(
+    path: Annotated[Path, typer.Argument(help="Directory to check")] = Path("."),
+):
+    """Show index status for a directory."""
+    try:
+        from .semantic import SemanticIndex
+    except ImportError as e:
+        err_console.print(f"[red]Error:[/] {e}")
+        raise typer.Exit(EXIT_ERROR)
+
+    path = path.resolve()
+    index = SemanticIndex(path)
+
+    if index.is_indexed():
+        count = index.count()
+        console.print(f"[green]✓[/] Index exists: {count} vectors")
+        console.print(f"[dim]  Location: {index.index_dir}[/]")
+    else:
+        console.print("[yellow]○[/] No index found")
+        console.print("[dim]  Run: hhg index build[/]")
+
+
+@index_app.command("clear")
+def index_clear(
+    path: Annotated[Path, typer.Argument(help="Directory to clear")] = Path("."),
+):
+    """Delete semantic search index."""
+    try:
+        from .semantic import SemanticIndex
+    except ImportError as e:
+        err_console.print(f"[red]Error:[/] {e}")
+        raise typer.Exit(EXIT_ERROR)
+
+    path = path.resolve()
+    index = SemanticIndex(path)
+
+    if index.is_indexed():
+        index.clear()
+        console.print("[green]✓[/] Index cleared")
+    else:
+        console.print("[yellow]No index to clear[/]")
+
+
+@index_app.command("search")
+def index_search(
+    query: Annotated[str, typer.Argument(help="Search query")],
+    path: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
+    n: Annotated[int, typer.Option("-n", help="Number of results")] = 10,
+    json_output: Annotated[bool, typer.Option("--json", help="Output JSON")] = False,
+    context: Annotated[int, typer.Option("-C", "--context", help="Lines of context")] = 0,
+):
+    """Semantic search using embeddings (requires index)."""
+    try:
+        from .semantic import SemanticIndex
+    except ImportError as e:
+        err_console.print(f"[red]Error:[/] {e}")
+        raise typer.Exit(EXIT_ERROR)
+
+    path = path.resolve()
+    index = SemanticIndex(path)
+
+    if not index.is_indexed():
+        err_console.print("[yellow]No index found. Building...[/]")
+        # Auto-build index
+        from .scanner import scan
+
+        files = scan(str(path), ".", include_hidden=False)
+        if files:
+            index.index(files)
+        else:
+            err_console.print("[red]Error:[/] No files to index")
+            raise typer.Exit(EXIT_ERROR)
+
+    # Search
+    results = index.search(query, k=n)
+
+    if json_output:
+        print(json.dumps(results))
+        raise typer.Exit(EXIT_MATCH if results else EXIT_NO_MATCH)
+
+    if not results:
+        err_console.print("[dim]No results.[/]")
+        raise typer.Exit(EXIT_NO_MATCH)
+
+    # Print results
+    for item in results:
+        _print_result(item, fast=False, use_color=True, context=context)
+
+    raise typer.Exit(EXIT_MATCH)
+
+
+# ============================================================================
 # Helper Functions
 # ============================================================================
 
@@ -811,6 +998,43 @@ complete -c hhg -l hidden -d "Include hidden"
 
 def main():
     """Main entry point."""
+
+    # Pre-parse index commands before Typer mangles the args
+    if len(sys.argv) > 1 and sys.argv[1] == "index":
+        args = sys.argv[2:]  # Everything after "index"
+        subcmd = args[0] if args else ""
+        target_path = Path(args[1]) if len(args) > 1 else Path(".")
+
+        try:
+            if subcmd == "build":
+                index_build(target_path, quiet=False)
+            elif subcmd == "status":
+                index_status(target_path)
+            elif subcmd == "clear":
+                index_clear(target_path)
+            elif subcmd == "search":
+                if len(args) >= 2:
+                    search_query = args[1]
+                    search_path = Path(args[2]) if len(args) > 2 else Path(".")
+                    index_search(search_query, search_path)
+                else:
+                    err_console.print("[yellow]Usage:[/] hhg index search <query> [path]")
+                    raise SystemExit(2)
+            elif subcmd in ("--help", "-h", ""):
+                console.print("[bold]hhg index[/] - Semantic search index management\n")
+                console.print("Commands:")
+                console.print("  [cyan]build[/] [path]         Build index for directory")
+                console.print("  [cyan]status[/] [path]        Show index status")
+                console.print("  [cyan]clear[/] [path]         Delete index")
+                console.print("  [cyan]search[/] <query> [path] Search using embeddings")
+            else:
+                err_console.print(f"[red]Error:[/] Unknown command '{subcmd}'")
+                err_console.print("Run [cyan]hhg index --help[/] for usage")
+                raise SystemExit(2)
+        except typer.Exit as e:
+            raise SystemExit(e.exit_code)
+        return
+
     app()
 
 
