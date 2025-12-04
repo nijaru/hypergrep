@@ -1,89 +1,61 @@
-# Strategic Roadmap
+# Roadmap
 
-**Goal:** Build `hygrep` - The high-performance Hybrid Search CLI.
+## v1: Grep + Rerank (Complete)
 
-## Completed Phases
+Stateless code search: regex scanning → cross-encoder reranking.
 
-### Phase 1-4: MVP (Completed)
-- [x] Directory walker with parallel scanning (~20k files/sec)
-- [x] POSIX regex via libc FFI
-- [x] ONNX cross-encoder reranking (mxbai-rerank-xsmall-v1)
-- [x] Tree-sitter extraction (Python, JS, TS, Go, Rust)
-- [x] JSON output for agents
-- [x] Auto model download on first run
+| Phase          | Status | Key Features                                        |
+| -------------- | ------ | --------------------------------------------------- |
+| 1-4 MVP        | ✅     | Mojo scanner, ONNX reranker, Tree-sitter extraction |
+| 5 Distribution | ✅     | Python extension module, PyPI wheels                |
+| 6 Performance  | ✅     | Parallel scanning (~20k files/sec), --fast mode     |
+| 7 CLI Polish   | ✅     | Colors, gitignore, context lines, completions       |
+| 8 Hardening    | ✅     | Model validation, error handling, 22 languages      |
+| 9 Release      | ✅     | v0.0.6 on PyPI                                      |
 
-### Phase 5: Distribution (Completed)
-- [x] Mojo Python extension module (`_scanner.so`)
-- [x] Python CLI entry point (`pip install hygrep`)
-- [x] Platform-specific wheel tags
-- [x] Removed legacy Mojo CLI
+## v2: Semantic-First (In Progress)
 
-### Phase 6: Performance (Completed)
-- [x] Thread optimization (4 threads, 2.5x speedup)
-- [x] `--fast` mode (skip reranking, 10x faster)
-- [x] `-t/--type` filter (file type filtering)
-- [x] `--max-candidates` (cap inference work)
-- [x] Graph optimization level (ORT_ENABLE_ALL)
+Reimagining hhg as pure semantic code search.
 
-## Current: Phase 7 - CLI Polish (v0.0.3)
+**Branch:** `experiment/semantic-search`
 
-**Goal:** Feature parity with modern CLI tools (ripgrep, fd, bat)
+### Phase 1: Core Refactor
 
-### P2: Essential Polish
-| Feature | Description | Beads |
-|---------|-------------|-------|
-| Color output | Colored paths, types, scores | hgrep-zxs |
-| Gitignore support | Parse .gitignore files | hgrep-qof |
-| Exit codes | 0=match, 1=none, 2=error | hgrep-bu6 |
-| Context lines | `-C/-A/-B` surrounding code | hgrep-rj4 |
+| Task         | Bead      | Status     | Description                   |
+| ------------ | --------- | ---------- | ----------------------------- |
+| CLI Refactor | hgrep-xwd | 🔴 Ready   | Main search flow → semantic   |
+| Auto-index   | hgrep-mb9 | ⏳ Blocked | Build index on first query    |
+| Auto-update  | hgrep-43j | ⏳ Blocked | Incremental update when stale |
 
-### P3: Quality of Life
-| Feature | Description | Beads |
-|---------|-------------|-------|
-| Stats flag | `--stats` timing breakdown | hgrep-5jf |
-| Min score | `--min-score` threshold | hgrep-97l |
-| Shell completions | bash, zsh, fish | hgrep-04d |
-| Exclude patterns | `--exclude`, `--glob` | hgrep-3r9 |
+### Phase 2: Polish
 
-### P4: Nice to Have
-| Feature | Description | Beads |
-|---------|-------------|-------|
-| Config file | `~/.config/hygrep/config.toml` | hgrep-1dg |
-| Hidden files | `--hidden` flag | hgrep-0gz |
+| Task           | Bead      | Status     | Description                                  |
+| -------------- | --------- | ---------- | -------------------------------------------- |
+| Escape hatches | hgrep-9go | ⏳ Blocked | -e (exact), -r (regex) flags                 |
+| Drop reranker  | hgrep-zlf | ⏳ Blocked | Remove cross-encoder (embeddings sufficient) |
+| Output format  | hgrep-dsr | ⏳ Blocked | Clean output with content preview            |
 
-## Phase 8: Distribution (v0.0.4)
+### Phase 3: Performance
 
-**Goal:** Easy installation via PyPI
+| Task               | Status  | Description         |
+| ------------------ | ------- | ------------------- |
+| Parallel embedding | ❌ TODO | Batch + multithread |
+| Index compression  | ❌ TODO | Reduce .hhg/ size   |
+| Lazy loading       | ❌ TODO | Faster startup      |
 
-| Task | Description | Beads |
-|------|-------------|-------|
-| GitHub Actions | Build wheels (macOS-arm64, linux-x64) | hgrep-4n4 |
-| PyPI publish | `pip install hygrep` | hgrep-4n4 |
+## Key Changes v1 → v2
 
-## Phase 9: Hardware Acceleration (v0.0.5+)
-
-**Goal:** Leverage GPU/NPU for inference
-
-### macOS (Apple Silicon)
-- CoreML requires custom onnxruntime build
-- Alternative: MLX framework
-- Expected: 3-5x speedup
-
-### Linux/Windows
-- CUDA via `onnxruntime-gpu`
-- ROCm for AMD GPUs
-- Expected: 5-10x (overhead for small batches)
-
-### Model Options
-| Model | Quality | Speed | Size |
-|-------|---------|-------|------|
-| mxbai-rerank-xsmall-v1 | Good | Fast | 40MB | **Current** |
-| mxbai-rerank-base-v2 | Better | 2x slower | 110MB |
-| jina-reranker-v1-tiny-en | OK | Fastest | 33MB |
+| Aspect       | v1                 | v2                      |
+| ------------ | ------------------ | ----------------------- |
+| Default mode | Grep + rerank      | Semantic search         |
+| Index        | None (stateless)   | Auto-managed .hhg/      |
+| Reranking    | Cross-encoder      | Dropped (embeddings)    |
+| Flags        | --fast, --semantic | -e, -r (escape hatches) |
+| First use    | Instant            | Auto-builds index       |
 
 ## Non-Goals
 
-- Indexing/persistence (stay stateless)
-- Background daemon (keep CLI simple)
-- Custom model training (use pretrained)
-- Server mode (CLI-first design)
+- ~~Indexing/persistence~~ → Now core feature
+- Background daemon (auto-update is enough)
+- Custom model training
+- Server mode
