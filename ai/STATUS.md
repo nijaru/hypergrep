@@ -18,11 +18,13 @@ None.
 
 ## Completed (Recent)
 
-### CLI Improvements (2025-12-03)
+### v0.0.6 Release (2025-12-03)
 
-- Add syntax highlighting for code context (Rich Syntax, 40+ extensions)
+- Add `end_line` to JSON output for editor integration
+- Add `-l`/`--files-only` option (list unique file paths)
+- Add `--compact` option (JSON without content)
+- Add syntax highlighting for code context (40+ languages)
 - Modernize CLI with Typer + Rich (visible subcommands, examples panel)
-- Refactor: move imports to module level, extract EXT_TO_LEXER constant
 
 ### v0.0.5 Release (2025-12-03)
 
