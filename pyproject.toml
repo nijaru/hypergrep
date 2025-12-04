@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "hygrep"
 version = "0.0.6"
-description = "Hybrid grep: fast scanning + neural reranking"
+description = "Grep + neural reranking for code search"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
     { name = "nijaru" }
 ]
-keywords = ["grep", "search", "semantic", "code", "cli"]
+keywords = ["grep", "search", "code", "cli", "reranking"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

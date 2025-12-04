@@ -1,4 +1,4 @@
-"""Reranker - ONNX cross-encoder for semantic ranking."""
+"""Reranker - ONNX cross-encoder for relevance scoring."""
 
 import os
 import sys

@@ -1,4 +1,4 @@
-"""hygrep CLI - Hybrid grep with neural reranking."""
+"""hygrep CLI - Grep + neural reranking for code search."""
 
 import json
 import os
@@ -116,7 +116,7 @@ EXAMPLES = """
 # Create the Typer app
 app = typer.Typer(
     name="hhg",
-    help="[bold]Hybrid grep:[/] fast scanning + neural reranking\n\n" + EXAMPLES,
+    help="[bold]Grep + rerank:[/] regex search → extract code → rank by relevance\n\n" + EXAMPLES,
     no_args_is_help=False,  # We handle empty args in callback
     invoke_without_command=True,
     rich_markup_mode="rich",
@@ -226,7 +226,7 @@ def search(
     # No query = show help panel
     if not query:
         console.print(
-            Panel(EXAMPLES.strip(), title="[bold]hhg[/] - Hybrid Grep", border_style="dim")
+            Panel(EXAMPLES.strip(), title="[bold]hhg[/] - Grep + Rerank", border_style="dim")
         )
         raise typer.Exit()
 

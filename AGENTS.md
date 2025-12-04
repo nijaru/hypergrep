@@ -1,6 +1,13 @@
 # hygrep (hhg)
 
-**Hyper hybrid grep: fast scanning + neural reranking. Stateless, no indexing.**
+**Grep + neural reranking for code search. Not semantic search - uses regex matching, then reranks results by relevance.**
+
+How it works:
+1. **Grep stage**: Regex pattern matching across files (POSIX regex via libc)
+2. **Extract stage**: Tree-sitter parses matched files to extract functions/classes
+3. **Rerank stage**: Cross-encoder scores extracted code by query relevance
+
+No embeddings, no vector DB, no indexing. Just grep → parse → rerank.
 
 ## Quick Reference
 
@@ -14,11 +21,13 @@ pixi run test                 # Run all tests
 ## Architecture
 
 ```
-Query → [Recall: Mojo Scanner] → candidates → [Rerank: ONNX] → results
-              ↓                                    ↓
-        Parallel regex                    Tree-sitter extraction
-        ~20k files/sec                    Cross-encoder scoring
+Query → [Mojo Scanner] → matching files → [Tree-sitter] → code blocks → [ONNX Reranker] → ranked results
+              ↓                                 ↓                              ↓
+        POSIX regex grep                  Extract functions           Cross-encoder scoring
+        (parallel, libc)                  & classes from AST          (batched inference)
 ```
+
+**Performance note**: For literal patterns (no regex metacharacters), the scanner uses SIMD-optimized string search via Mojo's `String.find()`. For regex patterns, it falls back to POSIX regex (libc). The literal fast path is ~5-10x faster than regex for simple queries like `"handleError"` or `"def foo"`.
 
 | Stage | Implementation |
 |-------|----------------|

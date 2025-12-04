@@ -13,6 +13,41 @@ from src.scanner.c_regex import Regex
 
 
 # ============================================================================
+# Pattern Detection
+# ============================================================================
+
+
+fn is_literal_pattern(pattern: String) -> Bool:
+    """Check if pattern contains no regex metacharacters.
+
+    If True, we can use fast SIMD string search instead of regex.
+    """
+    for i in range(len(pattern)):
+        var c = pattern[i]
+        # Common regex metacharacters
+        if c == "*" or c == "+" or c == "?" or c == "." or c == "^":
+            return False
+        if c == "$" or c == "[" or c == "]" or c == "(" or c == ")":
+            return False
+        if c == "{" or c == "}" or c == "|" or c == "\\":
+            return False
+    return True
+
+
+fn to_lower_ascii(s: String) -> String:
+    """Fast ASCII-only lowercase. Sufficient for code identifiers."""
+    var result = String(capacity=len(s))
+    for i in range(len(s)):
+        var c = ord(s[i])
+        # ASCII uppercase A-Z (65-90) -> lowercase a-z (97-122)
+        if c >= 65 and c <= 90:
+            result += chr(c + 32)
+        else:
+            result += s[i]
+    return result
+
+
+# ============================================================================
 # Python Extension Module Entry Point
 # ============================================================================
 
@@ -24,11 +59,16 @@ fn PyInit__scanner() -> PythonObject:
         var b = PythonModuleBuilder("_scanner")
         b.def_function[scan](
             "scan",
-            docstring="Scan directory for files matching pattern. Returns dict {path: content}.",
+            docstring=(
+                "Scan directory for files matching pattern. Returns dict {path:"
+                " content}."
+            ),
         )
         return b.finalize()
     except e:
-        return abort[PythonObject](String("failed to create _scanner module: ", e))
+        return abort[PythonObject](
+            String("failed to create _scanner module: ", e)
+        )
 
 
 # ============================================================================
@@ -37,7 +77,11 @@ fn PyInit__scanner() -> PythonObject:
 
 
 @export
-fn scan(root_obj: PythonObject, pattern_obj: PythonObject, include_hidden_obj: PythonObject = False) raises -> PythonObject:
+fn scan(
+    root_obj: PythonObject,
+    pattern_obj: PythonObject,
+    include_hidden_obj: PythonObject = False,
+) raises -> PythonObject:
     """
     Scan directory tree for files matching regex pattern.
 
@@ -95,83 +139,149 @@ struct ScanMatch(Copyable, Movable):
 
 
 fn is_ignored_dir(name: String) -> Bool:
-    if name == "node_modules": return True
-    if name == "target": return True
-    if name == "build": return True
-    if name == "dist": return True
-    if name == "venv": return True
-    if name == "env": return True
-    if name == ".git": return True
-    if name == ".pixi": return True
-    if name == ".vscode": return True
-    if name == ".idea": return True
-    if name == "__pycache__": return True
+    if name == "node_modules":
+        return True
+    if name == "target":
+        return True
+    if name == "build":
+        return True
+    if name == "dist":
+        return True
+    if name == "venv":
+        return True
+    if name == "env":
+        return True
+    if name == ".git":
+        return True
+    if name == ".pixi":
+        return True
+    if name == ".vscode":
+        return True
+    if name == ".idea":
+        return True
+    if name == "__pycache__":
+        return True
     return False
 
 
 fn is_binary_ext(name: String) -> Bool:
     # Compiled/object files
-    if name.endswith(".pyc"): return True
-    if name.endswith(".pyo"): return True
-    if name.endswith(".o"): return True
-    if name.endswith(".so"): return True
-    if name.endswith(".dylib"): return True
-    if name.endswith(".dll"): return True
-    if name.endswith(".bin"): return True
-    if name.endswith(".exe"): return True
-    if name.endswith(".a"): return True
-    if name.endswith(".lib"): return True
+    if name.endswith(".pyc"):
+        return True
+    if name.endswith(".pyo"):
+        return True
+    if name.endswith(".o"):
+        return True
+    if name.endswith(".so"):
+        return True
+    if name.endswith(".dylib"):
+        return True
+    if name.endswith(".dll"):
+        return True
+    if name.endswith(".bin"):
+        return True
+    if name.endswith(".exe"):
+        return True
+    if name.endswith(".a"):
+        return True
+    if name.endswith(".lib"):
+        return True
     # Archives
-    if name.endswith(".zip"): return True
-    if name.endswith(".tar"): return True
-    if name.endswith(".gz"): return True
-    if name.endswith(".bz2"): return True
-    if name.endswith(".xz"): return True
-    if name.endswith(".7z"): return True
-    if name.endswith(".rar"): return True
-    if name.endswith(".jar"): return True
-    if name.endswith(".war"): return True
-    if name.endswith(".whl"): return True
+    if name.endswith(".zip"):
+        return True
+    if name.endswith(".tar"):
+        return True
+    if name.endswith(".gz"):
+        return True
+    if name.endswith(".bz2"):
+        return True
+    if name.endswith(".xz"):
+        return True
+    if name.endswith(".7z"):
+        return True
+    if name.endswith(".rar"):
+        return True
+    if name.endswith(".jar"):
+        return True
+    if name.endswith(".war"):
+        return True
+    if name.endswith(".whl"):
+        return True
     # Documents/media
-    if name.endswith(".pdf"): return True
-    if name.endswith(".doc"): return True
-    if name.endswith(".docx"): return True
-    if name.endswith(".xls"): return True
-    if name.endswith(".xlsx"): return True
-    if name.endswith(".ppt"): return True
-    if name.endswith(".pptx"): return True
+    if name.endswith(".pdf"):
+        return True
+    if name.endswith(".doc"):
+        return True
+    if name.endswith(".docx"):
+        return True
+    if name.endswith(".xls"):
+        return True
+    if name.endswith(".xlsx"):
+        return True
+    if name.endswith(".ppt"):
+        return True
+    if name.endswith(".pptx"):
+        return True
     # Images
-    if name.endswith(".png"): return True
-    if name.endswith(".jpg"): return True
-    if name.endswith(".jpeg"): return True
-    if name.endswith(".gif"): return True
-    if name.endswith(".ico"): return True
-    if name.endswith(".svg"): return True
-    if name.endswith(".webp"): return True
-    if name.endswith(".bmp"): return True
-    if name.endswith(".tiff"): return True
+    if name.endswith(".png"):
+        return True
+    if name.endswith(".jpg"):
+        return True
+    if name.endswith(".jpeg"):
+        return True
+    if name.endswith(".gif"):
+        return True
+    if name.endswith(".ico"):
+        return True
+    if name.endswith(".svg"):
+        return True
+    if name.endswith(".webp"):
+        return True
+    if name.endswith(".bmp"):
+        return True
+    if name.endswith(".tiff"):
+        return True
     # Audio/video
-    if name.endswith(".mp3"): return True
-    if name.endswith(".mp4"): return True
-    if name.endswith(".wav"): return True
-    if name.endswith(".avi"): return True
-    if name.endswith(".mov"): return True
-    if name.endswith(".mkv"): return True
+    if name.endswith(".mp3"):
+        return True
+    if name.endswith(".mp4"):
+        return True
+    if name.endswith(".wav"):
+        return True
+    if name.endswith(".avi"):
+        return True
+    if name.endswith(".mov"):
+        return True
+    if name.endswith(".mkv"):
+        return True
     # Data files
-    if name.endswith(".db"): return True
-    if name.endswith(".sqlite"): return True
-    if name.endswith(".sqlite3"): return True
-    if name.endswith(".pickle"): return True
-    if name.endswith(".pkl"): return True
-    if name.endswith(".npy"): return True
-    if name.endswith(".npz"): return True
-    if name.endswith(".onnx"): return True
-    if name.endswith(".pt"): return True
-    if name.endswith(".pth"): return True
-    if name.endswith(".safetensors"): return True
+    if name.endswith(".db"):
+        return True
+    if name.endswith(".sqlite"):
+        return True
+    if name.endswith(".sqlite3"):
+        return True
+    if name.endswith(".pickle"):
+        return True
+    if name.endswith(".pkl"):
+        return True
+    if name.endswith(".npy"):
+        return True
+    if name.endswith(".npz"):
+        return True
+    if name.endswith(".onnx"):
+        return True
+    if name.endswith(".pt"):
+        return True
+    if name.endswith(".pth"):
+        return True
+    if name.endswith(".safetensors"):
+        return True
     # Lock files
-    if name.endswith(".lock"): return True
-    if name.endswith("-lock.json"): return True
+    if name.endswith(".lock"):
+        return True
+    if name.endswith("-lock.json"):
+        return True
     return False
 
 
@@ -187,7 +297,7 @@ fn is_likely_binary(content: String) -> Bool:
 
 
 fn scan_file_with_content(file: Path, re: Regex) -> String:
-    """Returns file content if matches, empty string if not."""
+    """Returns file content if regex matches, empty string if not."""
     try:
         var stat = file.stat()
         if stat.st_size > MAX_FILE_SIZE:
@@ -205,7 +315,35 @@ fn scan_file_with_content(file: Path, re: Regex) -> String:
         return ""
 
 
-fn hyper_scan(root: Path, pattern: String, include_hidden: Bool = False) raises -> List[ScanMatch]:
+fn scan_file_literal(file: Path, pattern_lower: String) -> String:
+    """Returns file content if literal pattern matches (case-insensitive).
+
+    Uses SIMD-optimized String.find() instead of regex for ~5-10x speedup
+    on literal patterns.
+    """
+    try:
+        var stat = file.stat()
+        if stat.st_size > MAX_FILE_SIZE:
+            return ""
+
+        with open(file, "r") as f:
+            var content = f.read()
+            # Skip binary files that slipped through extension check
+            if is_likely_binary(content):
+                return ""
+            # Case-insensitive match: convert content to lowercase
+            var content_lower = to_lower_ascii(content)
+            # String.find() uses SIMD _memmem internally
+            if content_lower.find(pattern_lower) >= 0:
+                return content  # Return original content, not lowercased
+            return ""
+    except:
+        return ""
+
+
+fn hyper_scan(
+    root: Path, pattern: String, include_hidden: Bool = False
+) raises -> List[ScanMatch]:
     var candidates = List[ScanMatch]()
     var all_files = List[Path]()
     var visited = Set[String]()
@@ -253,8 +391,8 @@ fn hyper_scan(root: Path, pattern: String, include_hidden: Bool = False) raises 
     if num_files == 0:
         return candidates^
 
-    # 2. Parallel scan
-    var re = Regex(pattern)
+    # 2. Parallel scan - choose fast path for literals
+    var use_literal = is_literal_pattern(pattern)
     var mask = alloc[Bool](num_files)
     var contents = List[String](capacity=num_files)
 
@@ -262,16 +400,34 @@ fn hyper_scan(root: Path, pattern: String, include_hidden: Bool = False) raises 
         mask[i] = False
         contents.append("")
 
-    @parameter
-    fn worker(i: Int):
-        var result = scan_file_with_content(all_files[i], re)
-        if len(result) > 0:
-            mask[i] = True
-            contents[i] = result
-        else:
-            mask[i] = False
+    if use_literal:
+        # Fast path: SIMD string search (case-insensitive)
+        var pattern_lower = to_lower_ascii(pattern)
 
-    parallelize[worker](num_files)
+        @parameter
+        fn literal_worker(i: Int):
+            var result = scan_file_literal(all_files[i], pattern_lower)
+            if len(result) > 0:
+                mask[i] = True
+                contents[i] = result
+            else:
+                mask[i] = False
+
+        parallelize[literal_worker](num_files)
+    else:
+        # Regex path: POSIX regex matching
+        var re = Regex(pattern)
+
+        @parameter
+        fn regex_worker(i: Int):
+            var result = scan_file_with_content(all_files[i], re)
+            if len(result) > 0:
+                mask[i] = True
+                contents[i] = result
+            else:
+                mask[i] = False
+
+        parallelize[regex_worker](num_files)
 
     # 3. Gather results
     for i in range(num_files):

@@ -1,17 +1,22 @@
 # hygrep (hhg)
 
-**Hyper hybrid grep: fast scanning + neural reranking**
+**Grep + neural reranking for code search**
 
 ```bash
 pip install hygrep
-hhg "auth logic" ./src
+hhg "auth" ./src
 ```
 
 ## What it does
 
-- **Semantic search:** "auth" finds "login", "session", "token"
+1. **Grep**: Regex search finds files containing your query
+2. **Extract**: Tree-sitter parses matching files to pull out functions/classes
+3. **Rerank**: Neural model scores each code block by relevance to your query
+
+**Not semantic search** - no embeddings, no vector DB. Just grep → parse → rerank.
+
 - **Smart context:** Returns full functions/classes, not just lines
-- **Fast:** Parallel regex recall (~20k files/sec), then neural reranking
+- **Fast:** Parallel regex recall, then neural reranking
 - **Zero indexing:** Works instantly on any codebase
 
 ## Install
@@ -52,13 +57,24 @@ src/session.py:15 [function] validate_token (0.76)
 ```
 
 With `--json`:
+
 ```json
-[{"file": "src/auth.py", "type": "function", "name": "login", "start_line": 42, "score": 0.89, "content": "def login(user): ..."}]
+[
+  {
+    "file": "src/auth.py",
+    "type": "function",
+    "name": "login",
+    "start_line": 42,
+    "score": 0.89,
+    "content": "def login(user): ..."
+  }
+]
 ```
 
 ## Config
 
 Optional `~/.config/hygrep/config.toml`:
+
 ```toml
 n = 10
 color = "always"
@@ -76,11 +92,11 @@ Bash, C, C++, C#, Elixir, Go, Java, JavaScript, JSON, Kotlin, Lua, Mojo, PHP, Py
 Query → Parallel regex scan → Tree-sitter extraction → ONNX reranking → Results
 ```
 
-| Stage | What |
-|-------|------|
-| Recall | Mojo/Python parallel scanner (~20k files/sec) |
-| Extract | Tree-sitter AST (functions, classes) |
-| Rerank | ONNX cross-encoder (mxbai-rerank-xsmall-v1) |
+| Stage   | What                                          |
+| ------- | --------------------------------------------- |
+| Recall  | Mojo/Python parallel scanner (~20k files/sec) |
+| Extract | Tree-sitter AST (functions, classes)          |
+| Rerank  | ONNX cross-encoder (mxbai-rerank-xsmall-v1)   |
 
 ## Development
 
