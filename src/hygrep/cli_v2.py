@@ -53,7 +53,7 @@ def build_index(root: Path, quiet: bool = False) -> None:
     root = root.resolve()
 
     if not quiet:
-        console.print(f"[dim]Scanning {root}...[/]")
+        err_console.print(f"[dim]Scanning {root}...[/]")
 
     # Scan for files
     t0 = time.perf_counter()
@@ -65,8 +65,8 @@ def build_index(root: Path, quiet: bool = False) -> None:
         return
 
     if not quiet:
-        console.print(f"[dim]Found {len(files)} files ({scan_time:.1f}s)[/]")
-        console.print("[dim]Building index...[/]")
+        err_console.print(f"[dim]Found {len(files)} files ({scan_time:.1f}s)[/]")
+        err_console.print("[dim]Building index...[/]")
 
     # Build index
     t0 = time.perf_counter()
@@ -74,19 +74,19 @@ def build_index(root: Path, quiet: bool = False) -> None:
 
     def on_progress(current: int, total: int, msg: str) -> None:
         if not quiet:
-            console.print(f"\r[dim]{msg} ({current}/{total})[/]", end="")
+            err_console.print(f"\r[dim]{msg} ({current}/{total})[/]", end="")
 
     stats = index.index(files, on_progress=on_progress)
     index_time = time.perf_counter() - t0
 
     if not quiet:
-        console.print()  # Newline after progress
-        console.print(
+        err_console.print()  # Newline after progress
+        err_console.print(
             f"[green]✓[/] Indexed {stats['blocks']} blocks "
             f"from {stats['files']} files ({index_time:.1f}s)"
         )
         if stats["skipped"]:
-            console.print(f"[dim]  Skipped {stats['skipped']} unchanged files[/]")
+            err_console.print(f"[dim]  Skipped {stats['skipped']} unchanged files[/]")
 
 
 def semantic_search(
@@ -99,7 +99,13 @@ def semantic_search(
     from .semantic import SemanticIndex
 
     index = SemanticIndex(root.resolve())
-    return index.search(query, k=n)
+    results = index.search(query, k=n)
+
+    # Filter by threshold if specified
+    if threshold > 0:
+        results = [r for r in results if r.get("score", 0) >= threshold]
+
+    return results
 
 
 def grep_search(pattern: str, root: Path, regex: bool = False) -> list[dict]:
@@ -187,12 +193,15 @@ def main(
     path: Path = typer.Argument(Path("."), help="Directory to search"),
     # Output
     n: int = typer.Option(10, "-n", help="Number of results"),
+    threshold: float = typer.Option(0.0, "-t", "--threshold", help="Minimum score (0-1)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="JSON output"),
     compact: bool = typer.Option(False, "-c", "--compact", help="No content in output"),
     quiet: bool = typer.Option(False, "-q", "--quiet", help="Suppress progress"),
     # Escape hatches
     exact: bool = typer.Option(False, "-e", "--exact", help="Exact string match (grep)"),
     regex: bool = typer.Option(False, "-r", "--regex", help="Regex match"),
+    # Index control
+    no_index: bool = typer.Option(False, "--no-index", help="Skip auto-index (fail if missing)"),
     # Meta
     version: bool = typer.Option(False, "-v", "--version", help="Show version"),
 ):
@@ -236,7 +245,7 @@ def main(
     if exact or regex:
         if not quiet:
             mode = "regex" if regex else "exact"
-            console.print(f"[dim]Searching ({mode})...[/]")
+            err_console.print(f"[dim]Searching ({mode})...[/]")
 
         t0 = time.perf_counter()
         results = grep_search(query, path, regex=regex)
@@ -251,19 +260,31 @@ def main(
         print_results(results, json_output, compact, root=path)
 
         if not quiet and not json_output:
-            console.print(f"[dim]{len(results)} results ({search_time:.2f}s)[/]")
+            err_console.print(f"[dim]{len(results)} results ({search_time:.2f}s)[/]")
 
         raise typer.Exit(EXIT_MATCH)
 
     # Default: semantic search
+    # Check omendb is available
+    from .semantic import HAS_OMENDB
+
+    if not HAS_OMENDB:
+        err_console.print("[red]Error:[/] omendb not installed (required for semantic search)")
+        err_console.print("Install with: pip install 'hygrep[semantic]'")
+        err_console.print("\n[dim]Tip: Use -e for exact match without semantic search[/]")
+        raise typer.Exit(EXIT_ERROR)
+
     # Check if index exists, build if not
     if not index_exists(path):
+        if no_index:
+            err_console.print("[red]Error:[/] No index found (use without --no-index to build)")
+            raise typer.Exit(EXIT_ERROR)
         if not quiet:
-            console.print("[yellow]No index found. Building...[/]")
+            err_console.print("[yellow]No index found. Building...[/]")
         build_index(path, quiet=quiet)
         if not quiet:
-            console.print()
-    else:
+            err_console.print()
+    elif not no_index:
         # Check for stale index and auto-update
         from .scanner import scan
         from .semantic import SemanticIndex
@@ -274,17 +295,17 @@ def main(
 
         if stale_count > 0:
             if not quiet:
-                console.print(f"[dim]Updating index ({stale_count} files changed)...[/]")
+                err_console.print(f"[dim]Updating index ({stale_count} files changed)...[/]")
             stats = index.update(files)
             if not quiet and stats.get("blocks", 0) > 0:
-                console.print(f"[dim]  Updated {stats['blocks']} blocks[/]")
+                err_console.print(f"[dim]  Updated {stats['blocks']} blocks[/]")
 
     # Run semantic search
     if not quiet:
-        console.print(f"[dim]Searching for: {query}[/]")
+        err_console.print(f"[dim]Searching for: {query}[/]")
 
     t0 = time.perf_counter()
-    results = semantic_search(query, path, n=n)
+    results = semantic_search(query, path, n=n, threshold=threshold)
     search_time = time.perf_counter() - t0
 
     if not results:
@@ -295,7 +316,7 @@ def main(
     print_results(results, json_output, compact, root=path)
 
     if not quiet and not json_output:
-        console.print(f"[dim]{len(results)} results ({search_time:.2f}s)[/]")
+        err_console.print(f"[dim]{len(results)} results ({search_time:.2f}s)[/]")
 
     raise typer.Exit(EXIT_MATCH)
 
@@ -314,7 +335,7 @@ def status(path: Path = typer.Argument(Path("."), help="Directory")):
     index_path = get_index_path(path)
 
     if not index_exists(path):
-        console.print(f"[yellow]No index[/] at {index_path}")
+        err_console.print(f"[yellow]No index[/] at {index_path}")
         raise typer.Exit()
 
     index = SemanticIndex(path)
@@ -342,7 +363,7 @@ def rebuild(
         index = SemanticIndex(path)
         index.clear()
         if not quiet:
-            console.print("[dim]Cleared existing index[/]")
+            err_console.print("[dim]Cleared existing index[/]")
 
     # Build fresh
     build_index(path, quiet=quiet)
@@ -360,7 +381,7 @@ def clean(path: Path = typer.Argument(Path("."), help="Directory")):
     path = path.resolve()
 
     if not index_exists(path):
-        console.print("[dim]No index to delete[/]")
+        err_console.print("[dim]No index to delete[/]")
         raise typer.Exit()
 
     index = SemanticIndex(path)

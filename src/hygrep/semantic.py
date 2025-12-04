@@ -53,9 +53,22 @@ class SemanticIndex:
         return hashlib.sha256(content).hexdigest()[:16]
 
     def _load_manifest(self) -> dict:
-        """Load manifest of indexed files."""
+        """Load manifest of indexed files.
+
+        Manifest format v2:
+            {"files": {"path": {"hash": "abc123", "blocks": ["id1", "id2"]}}}
+
+        Migrates from v1 format ({"files": {"path": "hash"}}) on load.
+        """
         if self.manifest_path.exists():
-            return json.loads(self.manifest_path.read_text())
+            data = json.loads(self.manifest_path.read_text())
+            # Migrate v1 -> v2 format
+            files = data.get("files", {})
+            for path, value in list(files.items()):
+                if isinstance(value, str):
+                    # v1 format: just hash string
+                    files[path] = {"hash": value, "blocks": []}
+            return data
         return {"files": {}}
 
     def _save_manifest(self, manifest: dict) -> None:
@@ -81,23 +94,34 @@ class SemanticIndex:
         db = self._ensure_db()
         manifest = self._load_manifest()
 
-        stats = {"files": 0, "blocks": 0, "skipped": 0, "errors": 0}
+        stats = {"files": 0, "blocks": 0, "skipped": 0, "errors": 0, "deleted": 0}
 
         # Collect all code blocks
         all_blocks = []
+        files_to_update = {}  # Track which files we're updating
+
         for file_path, content in files.items():
             file_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
 
             # Skip unchanged files
-            if manifest["files"].get(file_path) == file_hash:
+            file_entry = manifest["files"].get(file_path, {})
+            if isinstance(file_entry, dict) and file_entry.get("hash") == file_hash:
                 stats["skipped"] += 1
                 continue
+
+            # Delete old vectors for this file before re-indexing
+            old_blocks = file_entry.get("blocks", []) if isinstance(file_entry, dict) else []
+            if old_blocks:
+                db.delete(old_blocks)
+                stats["deleted"] += len(old_blocks)
 
             # Extract code blocks
             try:
                 blocks = self.extractor.extract(file_path, query="", content=content)
+                new_block_ids = []
                 for block in blocks:
                     block_id = f"{file_path}:{block['start_line']}:{block['name']}"
+                    new_block_ids.append(block_id)
                     all_blocks.append(
                         {
                             "id": block_id,
@@ -107,6 +131,7 @@ class SemanticIndex:
                             "text": f"{block['type']} {block['name']}\n{block['content']}",
                         }
                     )
+                files_to_update[file_path] = {"hash": file_hash, "blocks": new_block_ids}
                 stats["files"] += 1
             except Exception:
                 stats["errors"] += 1
@@ -148,9 +173,9 @@ class SemanticIndex:
             db.set(items)
             stats["blocks"] += len(batch)
 
-            # Update manifest for these files
-            for block_info in batch:
-                manifest["files"][block_info["file"]] = block_info["file_hash"]
+        # Update manifest with new file entries
+        for file_path, file_info in files_to_update.items():
+            manifest["files"][file_path] = file_info
 
         if on_progress:
             on_progress(total, total, "Done")
@@ -217,7 +242,9 @@ class SemanticIndex:
         changed = []
         for file_path, content in files.items():
             file_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
-            if indexed_files.get(file_path) != file_hash:
+            file_entry = indexed_files.get(file_path, {})
+            stored_hash = file_entry.get("hash") if isinstance(file_entry, dict) else file_entry
+            if stored_hash != file_hash:
                 changed.append(file_path)
 
         # Files in manifest but not in current scan = deleted
@@ -250,19 +277,25 @@ class SemanticIndex:
         if not changed and not deleted:
             return {"files": 0, "blocks": 0, "deleted": 0, "skipped": len(files)}
 
-        # Only pass changed files to index()
-        changed_files = {f: files[f] for f in changed if f in files}
-        stats = self.index(changed_files, on_progress=on_progress)
+        db = self._ensure_db()
+        manifest = self._load_manifest()
 
-        # Handle deleted files - remove from manifest
-        # Note: omendb doesn't have delete by metadata, so we keep vectors
-        # but remove from manifest (they won't match future searches well)
+        # Delete vectors for deleted files
+        deleted_count = 0
         if deleted:
-            manifest = self._load_manifest()
             for f in deleted:
+                file_entry = manifest["files"].get(f, {})
+                old_blocks = file_entry.get("blocks", []) if isinstance(file_entry, dict) else []
+                if old_blocks:
+                    db.delete(old_blocks)
+                    deleted_count += len(old_blocks)
                 manifest["files"].pop(f, None)
             self._save_manifest(manifest)
-            stats["deleted"] = len(deleted)
+
+        # Re-index changed files (index() handles deleting old vectors)
+        changed_files = {f: files[f] for f in changed if f in files}
+        stats = self.index(changed_files, on_progress=on_progress)
+        stats["deleted"] = stats.get("deleted", 0) + deleted_count
 
         return stats
 
