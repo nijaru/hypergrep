@@ -215,6 +215,21 @@ def main(
     if ctx.invoked_subcommand is not None:
         return
 
+    # Handle case where user typed a subcommand name as query
+    # (Typer can't distinguish due to optional positional args)
+    if query == "status":
+        err_console.print(f"[dim]Running: hhg status {path}[/]")
+        status(path=path)
+        raise typer.Exit()
+    elif query == "rebuild":
+        err_console.print(f"[dim]Running: hhg rebuild {path}[/]")
+        rebuild(path=path, quiet=quiet)
+        raise typer.Exit()
+    elif query == "clean":
+        err_console.print(f"[dim]Running: hhg clean {path}[/]")
+        clean(path=path)
+        raise typer.Exit()
+
     if version:
         console.print(f"hhg {__version__}")
         raise typer.Exit()
