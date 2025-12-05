@@ -302,8 +302,9 @@ class ContextExtractor:
         if not parser:
             return self._fallback_sliding_window(file_path, content, query)
 
-        # Parse
-        tree = parser.parse(content.encode())
+        # Parse - keep encoded bytes for correct byte offset slicing
+        content_bytes = content.encode()
+        tree = parser.parse(content_bytes)
 
         # Run Query (use cached query object)
         q_obj = self.queries.get(ext)
@@ -378,7 +379,9 @@ class ContextExtractor:
                     "name": name,
                     "start_line": node.start_point[0],
                     "end_line": node.end_point[0],
-                    "content": content[node.start_byte : node.end_byte],
+                    "content": content_bytes[node.start_byte : node.end_byte].decode(
+                        "utf-8", errors="replace"
+                    ),
                 },
             )
 
