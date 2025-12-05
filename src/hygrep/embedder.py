@@ -10,11 +10,18 @@ from tokenizers import Tokenizer
 # Suppress ONNX Runtime warnings
 ort.set_default_logger_severity(3)
 
-# all-MiniLM-L6-v2: small (80MB), fast, 384 dimensions
-MODEL_REPO = "sentence-transformers/all-MiniLM-L6-v2"
-MODEL_FILE = "onnx/model.onnx"
+# ModernBERT-embed-base: code-aware, Matryoshka dims
+# INT8 quantized for speed and size (~150MB)
+MODEL_REPO = "nomic-ai/modernbert-embed-base"
+MODEL_FILE = "onnx/model_int8.onnx"
 TOKENIZER_FILE = "tokenizer.json"
-DIMENSIONS = 384
+DIMENSIONS = 256  # Matryoshka: 768 full, 256 reduced (3x smaller index)
+MAX_LENGTH = 512  # Truncate to 512 tokens (enough for most functions, 16x faster than 8192)
+BATCH_SIZE = 16  # Small batches to avoid padding waste
+
+# Prefixes required by ModernBERT-embed
+QUERY_PREFIX = "search_query: "
+DOCUMENT_PREFIX = "search_document: "
 
 
 class Embedder:
@@ -42,9 +49,9 @@ class Embedder:
             cache_dir=self.cache_dir,
         )
 
-        # Load tokenizer
+        # Load tokenizer with truncation for efficiency
         self._tokenizer = Tokenizer.from_file(tokenizer_path)
-        self._tokenizer.enable_truncation(max_length=512)
+        self._tokenizer.enable_truncation(max_length=MAX_LENGTH)
         self._tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")
 
         # Load ONNX model
@@ -58,18 +65,12 @@ class Embedder:
             providers=["CPUExecutionProvider"],
         )
 
-    def embed(self, texts: list[str]) -> np.ndarray:
-        """Generate embeddings for a list of texts.
+        # Cache input/output names
+        self._input_names = [i.name for i in self._session.get_inputs()]
+        self._output_names = [o.name for o in self._session.get_outputs()]
 
-        Args:
-            texts: List of text strings to embed.
-
-        Returns:
-            numpy array of shape (len(texts), 384) with normalized embeddings.
-        """
-        if not texts:
-            return np.array([], dtype=np.float32).reshape(0, DIMENSIONS)
-
+    def _embed_batch(self, texts: list[str]) -> np.ndarray:
+        """Generate embeddings for a batch of texts (internal)."""
         self._ensure_loaded()
         assert self._tokenizer is not None
         assert self._session is not None
@@ -78,24 +79,30 @@ class Embedder:
         encoded = self._tokenizer.encode_batch(texts)
         input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
         attention_mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
-        token_type_ids = np.zeros_like(input_ids)
+
+        # Build inputs dict based on what model expects
+        inputs = {"input_ids": input_ids, "attention_mask": attention_mask}
+        if "token_type_ids" in self._input_names:
+            inputs["token_type_ids"] = np.zeros_like(input_ids)
 
         # Run inference
-        outputs = self._session.run(
-            None,
-            {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "token_type_ids": token_type_ids,
-            },
-        )
+        outputs = self._session.run(None, inputs)
 
-        # Mean pooling over token embeddings
-        token_embeddings = outputs[0]  # (batch, seq_len, hidden_size)
-        mask_expanded = attention_mask[:, :, np.newaxis].astype(np.float32)
-        sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
-        sum_mask = np.sum(mask_expanded, axis=1)
-        embeddings = sum_embeddings / np.maximum(sum_mask, 1e-9)
+        # Handle different output formats
+        if "sentence_embedding" in self._output_names:
+            # Direct sentence embedding output
+            idx = self._output_names.index("sentence_embedding")
+            embeddings = outputs[idx]
+        else:
+            # Mean pooling over token embeddings
+            token_embeddings = outputs[0]  # (batch, seq_len, hidden_size)
+            mask_expanded = attention_mask[:, :, np.newaxis].astype(np.float32)
+            sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
+            sum_mask = np.sum(mask_expanded, axis=1)
+            embeddings = sum_embeddings / np.maximum(sum_mask, 1e-9)
+
+        # Truncate to Matryoshka dimensions
+        embeddings = embeddings[:, :DIMENSIONS]
 
         # L2 normalize
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
@@ -103,6 +110,32 @@ class Embedder:
 
         return embeddings.astype(np.float32)
 
+    def embed(self, texts: list[str]) -> np.ndarray:
+        """Generate embeddings for documents (for indexing).
+
+        Args:
+            texts: List of text strings to embed.
+
+        Returns:
+            numpy array of shape (len(texts), DIMENSIONS) with normalized embeddings.
+        """
+        if not texts:
+            return np.array([], dtype=np.float32).reshape(0, DIMENSIONS)
+
+        # Add document prefix for ModernBERT
+        prefixed = [DOCUMENT_PREFIX + t for t in texts]
+
+        # Process in batches to avoid memory issues and reduce padding waste
+        all_embeddings = []
+        for i in range(0, len(prefixed), BATCH_SIZE):
+            batch = prefixed[i : i + BATCH_SIZE]
+            embeddings = self._embed_batch(batch)
+            all_embeddings.append(embeddings)
+
+        return np.vstack(all_embeddings)
+
     def embed_one(self, text: str) -> np.ndarray:
-        """Embed a single text string."""
-        return self.embed([text])[0]
+        """Embed a single query string (for search)."""
+        # Add query prefix for ModernBERT
+        prefixed = QUERY_PREFIX + text
+        return self._embed_batch([prefixed])[0]
