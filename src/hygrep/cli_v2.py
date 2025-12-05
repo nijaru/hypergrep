@@ -126,10 +126,10 @@ def grep_search(pattern: str, root: Path, regex: bool = False) -> list[dict]:
             results.append(
                 {
                     "file": file_path,
+                    "type": block["type"],
+                    "name": block["name"],
                     "line": block["start_line"],
                     "end_line": block["end_line"],
-                    "name": block["name"],
-                    "type": block["type"],
                     "content": block["content"],
                     "score": 1.0,  # No ranking for grep
                 }
@@ -146,6 +146,14 @@ def print_results(
     root: Path = None,
 ) -> None:
     """Print search results."""
+    # Convert to relative paths
+    if root:
+        for r in results:
+            try:
+                r["file"] = str(Path(r["file"]).relative_to(root))
+            except ValueError:
+                pass
+
     if json_output:
         if compact:
             output = [{k: v for k, v in r.items() if k != "content"} for r in results]
@@ -155,25 +163,12 @@ def print_results(
         return
 
     for r in results:
-        # Shorten file path if possible
         file_path = r["file"]
-        if root:
-            try:
-                file_path = str(Path(file_path).relative_to(root))
-            except ValueError:
-                pass
-
-        # Header line
-        score = r.get("score", 0)
-        score_str = f"({score:.2f})" if score else ""
         type_str = f"[dim]{r.get('type', '')}[/]"
         name_str = r.get("name", "")
-        line = r.get("line") or r.get("start_line", 0)
+        line = r.get("line", 0)
 
-        console.print(
-            f"[cyan]{file_path}[/]:[yellow]{line}[/] "
-            f"{type_str} [bold]{name_str}[/] [dim]{score_str}[/]"
-        )
+        console.print(f"[cyan]{file_path}[/]:[yellow]{line}[/] {type_str} [bold]{name_str}[/]")
 
         # Content preview (first 3 non-empty lines)
         if show_content and r.get("content"):

@@ -210,10 +210,11 @@ class SemanticIndex:
                     "file": meta.get("file", ""),
                     "type": meta.get("type", ""),
                     "name": meta.get("name", ""),
-                    "start_line": meta.get("start_line", 0),
+                    "line": meta.get("start_line", 0),
                     "end_line": meta.get("end_line", 0),
                     "content": meta.get("content", ""),
-                    "score": 1.0 - r.get("distance", 0),  # Convert distance to similarity
+                    "score": (2.0 - r.get("distance", 0))
+                    / 2.0,  # Cosine distance 0-2 → similarity 0-1
                 }
             )
 
