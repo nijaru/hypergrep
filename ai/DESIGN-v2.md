@@ -67,7 +67,8 @@ hhg <query> [path]        # Semantic search (builds/updates index as needed)
 hhg -e <pattern> [path]   # Exact match (no index, instant)
 hhg -r <pattern> [path]   # Regex match (no index, instant)
 hhg status [path]         # Show index stats
-hhg rebuild [path]        # Force full rebuild
+hhg build [path]          # Update index (incremental)
+hhg build --force [path]  # Full rebuild from scratch
 hhg clean [path]          # Delete index
 ```
 

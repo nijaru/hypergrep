@@ -70,8 +70,11 @@ hhg -l "config" .               # List matching files only
 hhg -t py,js "api" .            # Filter by file type
 hhg --exclude "tests/*" "fn" .  # Exclude patterns
 hhg status [path]               # Check index status
-hhg rebuild [path]              # Rebuild index from scratch
+hhg build [path]                # Update index (incremental)
+hhg build --force [path]        # Full rebuild from scratch
 hhg clean [path]                # Delete index
+hhg model                       # Check model status
+hhg model install               # Download/reinstall models
 ```
 
 **Note:** Options must come before positional arguments.

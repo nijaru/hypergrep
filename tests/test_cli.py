@@ -186,7 +186,7 @@ def test_files_only():
             cli.main()
 
         out = stdout.getvalue().strip()
-        lines = [l for l in out.split("\n") if l]  # Filter empty lines
+        lines = [line for line in out.split("\n") if line]  # Filter empty lines
         # Should have unique files only
         assert len(lines) == len(set(lines)), "Files should be unique"
         assert len(lines) >= 1, f"Should have at least one file, got: {out!r}"
@@ -321,8 +321,8 @@ def test_status_command():
     print("Status command: PASS")
 
 
-def test_rebuild_command():
-    """Test 'hhg rebuild' command."""
+def test_build_command():
+    """Test 'hhg build' command."""
     import io
     from contextlib import redirect_stdout
 
@@ -337,17 +337,17 @@ def test_rebuild_command():
         with redirect_stdout(io.StringIO()), contextlib.suppress(SystemExit):
             cli.main()
 
-        # Rebuild
-        sys.argv = ["hygrep", "rebuild", tmpdir, "-q"]
+        # Build (incremental update)
+        sys.argv = ["hygrep", "build", tmpdir, "-q"]
         stdout = io.StringIO()
         with redirect_stdout(stdout), contextlib.suppress(SystemExit):
             cli.main()
 
         # Index should still exist
         index_dir = os.path.join(tmpdir, ".hhg")
-        assert os.path.exists(index_dir), "Index should exist after rebuild"
+        assert os.path.exists(index_dir), "Index should exist after build"
 
-    print("Rebuild command: PASS")
+    print("Build command: PASS")
 
 
 def test_clean_command():
@@ -438,7 +438,7 @@ if __name__ == "__main__":
     test_end_line_in_json()
     test_semantic_mode()
     test_status_command()
-    test_rebuild_command()
+    test_build_command()
     test_clean_command()
     test_exact_mode()
     test_regex_mode()
