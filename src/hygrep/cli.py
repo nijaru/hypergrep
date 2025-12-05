@@ -359,15 +359,31 @@ def search(
 
     # Handle case where user typed a subcommand name as query
     # (Typer can't distinguish due to optional positional args)
+    path_str = str(path)
     if query == "status":
+        if path_str in ("--help", "-h"):
+            console.print(
+                "Usage: hhg status [PATH]\n\nShow index status for PATH (default: current dir)."
+            )
+            raise typer.Exit()
         err_console.print(f"[dim]Running: hhg status {path}[/]")
         status(path=path)
         raise typer.Exit()
     elif query == "rebuild":
+        if path_str in ("--help", "-h"):
+            console.print(
+                "Usage: hhg rebuild [PATH] [-q]\n\nRebuild index from scratch for PATH (default: current dir)."
+            )
+            raise typer.Exit()
         err_console.print(f"[dim]Running: hhg rebuild {path}[/]")
         rebuild(path=path, quiet=quiet)
         raise typer.Exit()
     elif query == "clean":
+        if path_str in ("--help", "-h"):
+            console.print(
+                "Usage: hhg clean [PATH]\n\nDelete index for PATH (default: current dir)."
+            )
+            raise typer.Exit()
         err_console.print(f"[dim]Running: hhg clean {path}[/]")
         clean(path=path)
         raise typer.Exit()
