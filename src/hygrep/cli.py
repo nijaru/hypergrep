@@ -472,8 +472,8 @@ def search(
 
     if not HAS_OMENDB:
         err_console.print("[red]Error:[/] omendb not installed (required for semantic search)")
-        err_console.print("Install with: pip install 'hygrep[semantic]'")
-        err_console.print("\n[dim]Tip: Use -e for exact match without semantic search[/]")
+        err_console.print("Upgrade with: uv tool upgrade hygrep")
+        err_console.print("\n[dim]Tip: Use -f for fast mode or -e for exact match[/]")
         raise typer.Exit(EXIT_ERROR)
 
     # Walk up to find existing index, or determine where to create one
@@ -540,7 +540,7 @@ def status(path: Path = typer.Argument(Path("."), help="Directory")):
 
     if not HAS_OMENDB:
         err_console.print("[red]Error:[/] omendb not installed")
-        err_console.print("Install with: pip install 'hygrep[semantic]'")
+        err_console.print("Upgrade with: uv tool upgrade hygrep")
         raise typer.Exit(EXIT_ERROR)
 
     path = path.resolve()
@@ -566,6 +566,7 @@ def rebuild(
 
     if not HAS_OMENDB:
         err_console.print("[red]Error:[/] omendb not installed")
+        err_console.print("Upgrade with: uv tool upgrade hygrep")
         raise typer.Exit(EXIT_ERROR)
 
     path = path.resolve()
@@ -588,6 +589,7 @@ def clean(path: Path = typer.Argument(Path("."), help="Directory")):
 
     if not HAS_OMENDB:
         err_console.print("[red]Error:[/] omendb not installed")
+        err_console.print("Upgrade with: uv tool upgrade hygrep")
         raise typer.Exit(EXIT_ERROR)
 
     path = path.resolve()
