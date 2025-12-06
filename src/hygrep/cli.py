@@ -60,6 +60,8 @@ def index_exists(root: Path) -> bool:
 
 def build_index(root: Path, quiet: bool = False) -> None:
     """Build semantic index for directory."""
+    from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
+
     from .scanner import scan
     from .semantic import SemanticIndex
 
@@ -74,7 +76,7 @@ def build_index(root: Path, quiet: bool = False) -> None:
         index.index(files)
         return
 
-    # Interactive mode: show spinner
+    # Interactive mode: show spinner for scanning
     with Status("Scanning files...", console=err_console):
         t0 = time.perf_counter()
         files = scan(str(root), ".", include_hidden=False)
@@ -86,13 +88,28 @@ def build_index(root: Path, quiet: bool = False) -> None:
 
     err_console.print(f"[dim]Found {len(files)} files ({scan_time:.1f}s)[/]")
 
-    # Phase 2: Extract and embed
+    # Phase 2: Extract and embed with progress bar
     index = SemanticIndex(root)
+    t0 = time.perf_counter()
 
-    with Status("Indexing...", console=err_console):
-        t0 = time.perf_counter()
-        stats = index.index(files)
-        index_time = time.perf_counter() - t0
+    progress = Progress(
+        TextColumn("[dim]Embedding[/]"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=err_console,
+    )
+    task_id = None
+
+    def on_progress(current: int, total: int, _msg: str) -> None:
+        nonlocal task_id
+        if task_id is None:
+            task_id = progress.add_task("Embedding", total=total)
+        progress.update(task_id, completed=current)
+
+    with progress:
+        stats = index.index(files, on_progress=on_progress)
+
+    index_time = time.perf_counter() - t0
 
     # Summary
     err_console.print(
@@ -526,10 +543,27 @@ def search(
 
         if stale_count > 0:
             if not quiet:
-                with Status(
-                    f"Updating index ({stale_count} files changed)...", console=err_console
-                ):
-                    stats = index.update(files)
+                from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
+
+                err_console.print(f"[dim]Updating {stale_count} changed files...[/]")
+
+                progress = Progress(
+                    TextColumn("[dim]Embedding[/]"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    console=err_console,
+                )
+                task_id = None
+
+                def on_progress(current: int, total: int, _msg: str) -> None:
+                    nonlocal task_id
+                    if task_id is None:
+                        task_id = progress.add_task("Embedding", total=total)
+                    progress.update(task_id, completed=current)
+
+                with progress:
+                    stats = index.update(files, on_progress=on_progress)
+
                 if stats.get("blocks", 0) > 0:
                     err_console.print(f"[dim]  Updated {stats['blocks']} blocks[/]")
             else:
@@ -648,8 +682,26 @@ def build(
             return
 
         if not quiet:
-            with Status(f"Updating {stale_count} files...", console=err_console):
-                stats = index.update(files)
+            from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
+
+            err_console.print(f"[dim]Updating {stale_count} files...[/]")
+
+            progress = Progress(
+                TextColumn("[dim]Embedding[/]"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=err_console,
+            )
+            task_id = None
+
+            def on_progress(current: int, total: int, _msg: str) -> None:
+                nonlocal task_id
+                if task_id is None:
+                    task_id = progress.add_task("Embedding", total=total)
+                progress.update(task_id, completed=current)
+
+            with progress:
+                stats = index.update(files, on_progress=on_progress)
         else:
             stats = index.update(files)
 
