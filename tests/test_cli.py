@@ -265,7 +265,14 @@ def test_semantic_mode():
         if os.path.exists(index_dir):
             shutil.rmtree(index_dir)
 
-        # Semantic search (default mode - auto-indexes)
+        # Build index first (required for semantic search)
+        sys.argv = ["hygrep", "-q", "build", tmpdir]
+        with contextlib.suppress(SystemExit):
+            cli.main()
+
+        assert os.path.exists(index_dir), "Index should be created by build"
+
+        # Semantic search (default mode)
         sys.argv = ["hygrep", "-q", "--json", "authentication", tmpdir]
         stdout = io.StringIO()
         with redirect_stdout(stdout), contextlib.suppress(SystemExit):
@@ -275,9 +282,6 @@ def test_semantic_mode():
         results = json.loads(out)
         assert len(results) >= 1, "Should find at least 1 result"
         assert results[0]["name"] == "login", f"Expected 'login', got '{results[0]['name']}'"
-
-        # Index should now exist
-        assert os.path.exists(index_dir), "Index should be created"
 
     print("Semantic mode: PASS")
 
@@ -303,8 +307,8 @@ def test_status_command():
         with open(test_file, "w") as f:
             f.write("def foo(): pass\n")
 
-        # Build index via semantic search
-        sys.argv = ["hygrep", "-q", "--json", "foo", tmpdir]
+        # Build index explicitly
+        sys.argv = ["hygrep", "-q", "build", tmpdir]
         with redirect_stdout(io.StringIO()), contextlib.suppress(SystemExit):
             cli.main()
 
@@ -332,19 +336,16 @@ def test_build_command():
         with open(test_file, "w") as f:
             f.write("def hello(): pass\n")
 
-        # First create an index via search
-        sys.argv = ["hygrep", "-q", "--json", "hello", tmpdir]
-        with redirect_stdout(io.StringIO()), contextlib.suppress(SystemExit):
-            cli.main()
+        index_dir = os.path.join(tmpdir, ".hhg")
+        assert not os.path.exists(index_dir), "Index should not exist yet"
 
-        # Build (incremental update)
-        sys.argv = ["hygrep", "build", tmpdir, "-q"]
+        # Build index
+        sys.argv = ["hygrep", "-q", "build", tmpdir]
         stdout = io.StringIO()
         with redirect_stdout(stdout), contextlib.suppress(SystemExit):
             cli.main()
 
-        # Index should still exist
-        index_dir = os.path.join(tmpdir, ".hhg")
+        # Index should exist now
         assert os.path.exists(index_dir), "Index should exist after build"
 
     print("Build command: PASS")
@@ -356,12 +357,12 @@ def test_clean_command():
     from contextlib import redirect_stdout
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create test file and index
+        # Create test file and build index
         test_file = os.path.join(tmpdir, "test.py")
         with open(test_file, "w") as f:
             f.write("def hello(): pass\n")
 
-        sys.argv = ["hygrep", "-q", "--json", "hello", tmpdir]
+        sys.argv = ["hygrep", "-q", "build", tmpdir]
         with redirect_stdout(io.StringIO()), contextlib.suppress(SystemExit):
             cli.main()
 

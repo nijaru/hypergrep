@@ -496,20 +496,12 @@ def search(
     index_root, existing_index = find_index(path)
     search_path = path  # May be a subdir of index_root
 
-    # Check if index exists, build if not
+    # Check if index exists
     if existing_index is None:
-        if no_index:
-            err_console.print("[red]Error:[/] No index found (use without --no-index to build)")
-            raise typer.Exit(EXIT_ERROR)
-        if not quiet:
-            err_console.print("[yellow]No index found. Building...[/]")
-            err_console.print("[dim]Tip: Use -f for instant search without an index[/]")
-        # Build at search_path (becomes the new index_root)
-        build_index(path, quiet=quiet)
-        index_root = path
-        if not quiet:
-            err_console.print()
-    elif not no_index:
+        err_console.print("[yellow]No index found.[/] Run [bold]hhg build[/] to create one.")
+        raise typer.Exit(EXIT_NO_MATCH)
+
+    if not no_index:
         # Found existing index - check for stale files and auto-update
         from .scanner import scan
         from .semantic import SemanticIndex
