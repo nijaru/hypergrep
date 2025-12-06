@@ -285,6 +285,9 @@ def run_tests():
 
     for cls in test_classes:
         print(f"\n=== {cls.__name__} ===")
+        # Call setup_class if exists (pytest calls this, but direct run doesn't)
+        if hasattr(cls, "setup_class"):
+            cls.setup_class()
         instance = cls()
         for name in dir(instance):
             if not name.startswith("test_"):
