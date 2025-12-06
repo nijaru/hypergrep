@@ -503,6 +503,7 @@ def search(
             raise typer.Exit(EXIT_ERROR)
         if not quiet:
             err_console.print("[yellow]No index found. Building...[/]")
+            err_console.print("[dim]Tip: Use -f for instant search without an index[/]")
         # Build at search_path (becomes the new index_root)
         build_index(path, quiet=quiet)
         index_root = path
