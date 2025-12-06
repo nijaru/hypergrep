@@ -603,16 +603,20 @@ def status(path: Path = typer.Argument(Path("."), help="Directory")):
 @app.command()
 def build(
     path: Path = typer.Argument(Path("."), help="Directory"),
-    force: bool = typer.Option(False, "--force", "-f", help="Full rebuild (delete and recreate)"),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force rebuild or override parent index"
+    ),
     quiet: bool = typer.Option(False, "-q", "--quiet", help="Suppress progress"),
 ):
     """Build or update index.
 
     By default, does an incremental update (only changed files).
-    Use --force to delete and rebuild from scratch.
+    Use --force to rebuild from scratch or create separate index when parent exists.
     """
+    import shutil
+
     from .scanner import scan
-    from .semantic import HAS_OMENDB, SemanticIndex
+    from .semantic import HAS_OMENDB, SemanticIndex, find_parent_index, find_subdir_indexes
 
     if not HAS_OMENDB:
         err_console.print("[red]Error:[/] omendb not installed")
@@ -620,6 +624,18 @@ def build(
         raise typer.Exit(EXIT_ERROR)
 
     path = path.resolve()
+
+    # Check for parent index that already covers this path
+    if not index_exists(path):
+        parent = find_parent_index(path)
+        if parent and not force:
+            err_console.print(f"[yellow]Parent index at {parent} covers this directory.[/]")
+            err_console.print(f"[dim]Run 'hhg build {parent}' to update it.[/]")
+            err_console.print("[dim]Or use 'hhg build --force' to create separate index here.[/]")
+            raise typer.Exit(EXIT_ERROR)
+
+    # Find subdir indexes that will be superseded
+    subdir_indexes = find_subdir_indexes(path)
 
     if force and index_exists(path):
         # Full rebuild: clear first
@@ -643,6 +659,14 @@ def build(
         if stale_count == 0:
             if not quiet:
                 console.print("[green]✓[/] Index up to date")
+            # Still clean up subdir indexes if any
+            if subdir_indexes:
+                for idx in subdir_indexes:
+                    shutil.rmtree(idx)
+                    if not quiet:
+                        err_console.print(
+                            f"[dim]Removed superseded index: {idx.parent.relative_to(path)}[/]"
+                        )
             return
 
         if not quiet:
@@ -660,7 +684,40 @@ def build(
                 console.print(f"  [dim]Removed {stats['deleted']} stale blocks[/]")
     else:
         # No index exists, build fresh
+        # First, merge any subdir indexes (much faster than re-embedding)
+        merged_any = False
+        if subdir_indexes:
+            if not quiet:
+                err_console.print(f"[dim]Merging {len(subdir_indexes)} subdir index(es)...[/]")
+            index = SemanticIndex(path)
+            total_merged = 0
+            for idx in subdir_indexes:
+                merge_stats = index.merge_from_subdir(idx)
+                total_merged += merge_stats.get("merged", 0)
+            if total_merged > 0:
+                merged_any = True
+                if not quiet:
+                    err_console.print(f"[dim]  Merged {total_merged} blocks from subdir indexes[/]")
+
+        # Build (will skip files already merged via hash matching)
         build_index(path, quiet=quiet)
+
+        # If we merged, clean up any deleted files from merged manifests
+        if merged_any:
+            index = SemanticIndex(path)
+            files = scan(str(path), ".", include_hidden=False)
+            changed, deleted = index.get_stale_files(files)
+            if deleted:
+                # Remove orphaned entries from deleted files
+                index.update(files)
+                if not quiet:
+                    err_console.print(f"[dim]  Cleaned up {len(deleted)} deleted file entries[/]")
+
+    # Clean up subdir indexes (now superseded by parent)
+    for idx in subdir_indexes:
+        shutil.rmtree(idx)
+        if not quiet:
+            err_console.print(f"[dim]Removed superseded index: {idx.parent.relative_to(path)}[/]")
 
 
 @app.command()

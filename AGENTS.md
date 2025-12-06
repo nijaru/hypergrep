@@ -29,6 +29,10 @@ Query → Embed → Vector search (omendb) → Results
          Requires 'hhg build' first (.hhg/)
          Auto-updates stale files on search
 
+Index hierarchy:
+- Building: checks parent (refuses if exists), merges subdirs (fast vector copy)
+- Searching: walks up to find index, filters results to search scope
+
 Fast mode (-f):
 Query → [Mojo Scanner] → matching files → [Tree-sitter] → code blocks → [ONNX Reranker] → Results
               ↓                                 ↓                              ↓

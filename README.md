@@ -11,24 +11,34 @@ hhg "authentication flow" ./src
 
 Search your codebase using natural language. Results are functions and classes ranked by relevance:
 
-```
-$ hhg "error handling" ./tests/golden
-No index found. Building...
-Found 4 files (0.0s)
-✓ Indexed 59 blocks from 4 files (5.4s)
+```bash
+$ hhg build ./src                    # Build index first
+Found 40 files (0.0s)
+✓ Indexed 646 blocks from 40 files (34.2s)
 
-Searching for: error handling
+$ hhg "error handling" ./src         # Then search
 api_handlers.ts:127 function errorHandler
   function errorHandler(err: Error, req: Request, res: Response, next: NextFunc...
-    console.error('API Error:', err.message);
 
 errors.rs:7 class AppError
   pub enum AppError {
-      /// Database operation failed.
       Database(DatabaseError),
 
-2 results (0.60s)
+2 results (0.52s)
 ```
+
+## Why hhg over grep?
+
+grep finds text. hhg finds code.
+
+| Query            | grep finds                | hhg finds                     |
+| ---------------- | ------------------------- | ----------------------------- |
+| "error handling" | Comments mentioning it    | `errorHandler()`, `AppError`  |
+| "authentication" | Strings containing "auth" | `login()`, `verify_token()`   |
+| "database"       | Config files, comments    | `Connection`, `query()`, `Db` |
+
+Use grep for exact strings (`TODO`, `FIXME`, import statements).
+Use hhg when you want implementations, not mentions.
 
 ## Search Modes
 
@@ -40,7 +50,8 @@ errors.rs:7 class AppError
 | **Regex**    | `-r`      | Pattern matching                      |
 
 ```bash
-hhg "auth flow" ./src           # Semantic (auto-indexes on first run)
+hhg build ./src                 # Build index first (one-time)
+hhg "auth flow" ./src           # Semantic search (requires index)
 hhg -f "validate" ./src         # Grep + neural rerank (no index needed)
 hhg -e "TODO" ./src             # Exact match (fastest)
 hhg -r "TODO.*fix" ./src        # Regex match

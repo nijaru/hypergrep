@@ -25,6 +25,7 @@ Semantic-first code search with ModernBERT embeddings:
 | Search scope filtering | Done   | Filter results to search directory    |
 | Auto-update stale      | Done   | Incremental updates (hash-based)      |
 | Explicit build         | Done   | Requires `hhg build` before search    |
+| Index hierarchy        | Done   | Parent check, subdir merge, walk-up   |
 
 **Index UX:**
 

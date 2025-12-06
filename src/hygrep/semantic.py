@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -46,6 +47,63 @@ def find_index_root(search_path: Path) -> tuple[Path, Path | None]:
 
     # No existing index found, will create at search root
     return (search_path, None)
+
+
+def find_parent_index(path: Path) -> Path | None:
+    """Find parent directory with existing index (not at path itself).
+
+    Args:
+        path: Directory to check from.
+
+    Returns:
+        Parent directory with index, or None if no parent has index.
+    """
+    path = Path(path).resolve()
+    current = path.parent  # Start from parent, not self
+
+    while current != current.parent:
+        index_dir = current / INDEX_DIR
+        if (index_dir / MANIFEST_FILE).exists():
+            return current
+        current = current.parent
+
+    return None
+
+
+def find_subdir_indexes(path: Path) -> list[Path]:
+    """Find all .hhg/ directories in subdirectories.
+
+    Args:
+        path: Root directory to search under.
+
+    Returns:
+        List of paths to .hhg/ directories found in subdirs.
+    """
+    path = Path(path).resolve()
+    indexes = []
+
+    for root, dirs, _files in os.walk(path):
+        root_path = Path(root)
+        # Skip the path itself
+        if root_path == path:
+            # Check subdirs for .hhg
+            if INDEX_DIR in dirs:
+                # Don't descend into .hhg
+                dirs.remove(INDEX_DIR)
+            continue
+
+        # Found .hhg in a subdir
+        if INDEX_DIR in dirs:
+            index_path = root_path / INDEX_DIR
+            if (index_path / MANIFEST_FILE).exists():
+                indexes.append(index_path)
+            # Don't descend into .hhg
+            dirs.remove(INDEX_DIR)
+
+        # Skip hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+
+    return indexes
 
 
 class SemanticIndex:
@@ -416,3 +474,95 @@ class SemanticIndex:
 
         if self.index_dir.exists():
             shutil.rmtree(self.index_dir)
+
+    def merge_from_subdir(self, subdir_index_path: Path) -> dict:
+        """Merge vectors from a subdirectory index into this one.
+
+        Translates paths from subdir-relative to parent-relative.
+        Much faster than re-embedding since vectors are just copied.
+
+        Args:
+            subdir_index_path: Path to subdir's .hhg/ directory.
+
+        Returns:
+            Stats dict with counts.
+        """
+        db = self._ensure_db()
+        manifest = self._load_manifest()
+
+        # Calculate subdir prefix (path from self.root to subdir)
+        subdir_root = subdir_index_path.parent
+        try:
+            prefix = str(subdir_root.relative_to(self.root))
+        except ValueError:
+            return {"merged": 0, "error": "subdir not under root"}
+
+        # Load subdir manifest
+        subdir_manifest_path = subdir_index_path / MANIFEST_FILE
+        if not subdir_manifest_path.exists():
+            return {"merged": 0, "error": "no manifest"}
+
+        subdir_manifest = json.loads(subdir_manifest_path.read_text())
+        subdir_files = subdir_manifest.get("files", {})
+
+        # Open subdir database
+        subdir_vectors_path = str(subdir_index_path / VECTORS_DIR)
+        try:
+            subdir_db = omendb.open(subdir_vectors_path, dimensions=DIMENSIONS)
+        except Exception:
+            return {"merged": 0, "error": "cannot open subdir db"}
+
+        stats = {"merged": 0, "files": 0, "skipped": 0}
+
+        # Process each file in subdir manifest
+        for rel_path, file_info in subdir_files.items():
+            if not isinstance(file_info, dict):
+                continue
+
+            # Translate path: subdir-relative → parent-relative
+            parent_rel_path = f"{prefix}/{rel_path}"
+
+            # Skip if already in parent manifest
+            if parent_rel_path in manifest.get("files", {}):
+                stats["skipped"] += 1
+                continue
+
+            block_ids = file_info.get("blocks", [])
+            new_block_ids = []
+
+            for block_id in block_ids:
+                # Get vector from subdir db
+                item = subdir_db.get(block_id)
+                if item is None:
+                    continue
+
+                # Translate block ID and metadata
+                new_id = f"{prefix}/{block_id}"
+                metadata = item.get("metadata", {})
+                if "file" in metadata:
+                    metadata["file"] = f"{prefix}/{metadata['file']}"
+
+                # Insert into parent db
+                db.set(
+                    [
+                        {
+                            "id": new_id,
+                            "vector": item["embedding"],
+                            "metadata": metadata,
+                        }
+                    ]
+                )
+
+                new_block_ids.append(new_id)
+                stats["merged"] += 1
+
+            # Update parent manifest
+            if new_block_ids:
+                manifest["files"][parent_rel_path] = {
+                    "hash": file_info.get("hash", ""),
+                    "blocks": new_block_ids,
+                }
+                stats["files"] += 1
+
+        self._save_manifest(manifest)
+        return stats
