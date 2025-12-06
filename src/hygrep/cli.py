@@ -170,7 +170,7 @@ def fast_search(
     query: str,
     root: Path,
     n: int = 10,
-    max_candidates: int = 50,
+    max_candidates: int = 100,
 ) -> list[dict]:
     """Grep + neural rerank (no index required)."""
     from .reranker import Reranker

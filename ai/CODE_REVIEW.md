@@ -101,11 +101,6 @@ First query pays model loading cost. Subsequent queries are fast.
    BATCH_SIZE = 32  # Was 16, ~15% faster
    ```
 
-2. **Reduce default max_candidates in reranker**
-   ```python
-   max_candidates: int = 50,  # Was 100, 2x faster
-   ```
-
 ### Medium Effort
 
 3. **Pre-filter candidates before reranking**
@@ -173,4 +168,3 @@ The codebase is well-architected with appropriate technology choices:
 **Actionable improvements:**
 
 1. Increase embedder BATCH_SIZE from 16 to 32 (~15% faster indexing)
-2. Reduce max_candidates from 100 to 50 (~2x faster fast-search)
